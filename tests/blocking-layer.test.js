@@ -70,6 +70,19 @@ describe('activateBlockingLayer: focus containment', () => {
 
     expect(focusSpy).toHaveBeenCalled();
   });
+
+  it('blurs the host (no toggle to return to) in toggle-less mode', () => {
+    // With no toggle there is nowhere to return focus, so an escaping focus is simply released
+    // back from the host rather than handed to it.
+    activate({ toggleEl: null });
+    const host = document.createElement('input');
+    document.body.appendChild(host);
+    const blurSpy = jest.spyOn(host, 'blur');
+
+    host.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+    expect(blurSpy).toHaveBeenCalled();
+  });
 });
 
 describe('activateBlockingLayer: key input', () => {
@@ -105,6 +118,19 @@ describe('activateBlockingLayer: key input', () => {
     host.dispatchEvent(ev);
 
     expect(ev.defaultPrevented).toBe(true);
+  });
+
+  it('swallows Escape on keyup without invoking onEscape (keydown owns the real handling)', () => {
+    const onEscape = jest.fn();
+    activate({ onEscape });
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+
+    const ev = new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, cancelable: true });
+    host.dispatchEvent(ev);
+
+    expect(ev.defaultPrevented).toBe(true);
+    expect(onEscape).not.toHaveBeenCalled();
   });
 
   it('Escape calls onEscape and preventDefaults', () => {

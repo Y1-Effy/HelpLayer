@@ -116,6 +116,82 @@ describe('createToggleController', () => {
     controller.destroy();
   });
 
+  it('closes the open popup when its target element is removed while ON', async() => {
+    const onClose = jest.fn();
+    const controller = createToggleController({ config, toggle: toggleEl, onClose });
+    const target = document.querySelector('[data-help-id="save"]');
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    target.remove();
+    await tick();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(markerCount()).toBe(1); // only the free placement remains
+
+    controller.destroy();
+  });
+
+  it('enable() is idempotent: a second call does not re-mount the subsystems', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    expect(markerCount()).toBe(2);
+
+    controller.enable(); // no-op while already ON
+
+    expect(markerCount()).toBe(2); // not doubled
+    expect(document.querySelectorAll('.help-layer-blocking-layer')).toHaveLength(1);
+
+    controller.destroy();
+  });
+
+  it('Escape disables the mode when no popup is open', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    expect(controller.isActive()).toBe(true);
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+
+    expect(controller.isActive()).toBe(false);
+    expect(markerCount()).toBe(0);
+
+    controller.destroy();
+  });
+
+  it('Escape only closes the open popup, keeping the mode ON', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(controller.isActive()).toBe(true);
+
+    controller.destroy();
+  });
+
+  it('clicking the blocking layer background closes the open popup', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    document.querySelector('.help-layer-blocking-layer').click();
+
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(controller.isActive()).toBe(true);
+
+    controller.destroy();
+  });
+
   it('warns about and ignores an unregistered data-help-id', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const ghost = document.createElement('button');

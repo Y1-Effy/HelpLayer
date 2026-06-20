@@ -31,6 +31,15 @@ describe('validateConfig', () => {
       __free_001: { title: 'Title', text: 'description', position: { top: 'eighty', left: 600 } },
     })).toThrow();
   });
+
+  it('rejects a non-finite position (NaN / Infinity)', () => {
+    expect(() => validateConfig({
+      __free_001: { title: 'Title', text: 'description', position: { top: NaN, left: 0 } },
+    })).toThrow();
+    expect(() => validateConfig({
+      __free_001: { title: 'Title', text: 'description', position: { top: 10, left: Infinity } },
+    })).toThrow();
+  });
 });
 
 describe('normalizeConfig', () => {

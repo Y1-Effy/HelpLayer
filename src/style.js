@@ -25,15 +25,18 @@ const STYLE_ATTR = 'data-help-layer-style';
 //   --help-layer-overlay-cursor    cursor over the blocked area (default default; e.g. not-allowed / help)
 const CSS = `
 .help-layer-blocking-layer {
-  position: fixed;
-  inset: 0;
+  /* Structural properties !important so a host can't accidentally un-fix or restack the layer and
+     defeat the blocking guarantee. */
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: auto !important;
   /* Default transparent (unchanged). Set --help-layer-overlay-bg to tint it into a scrim that signals
      "the host app is inactive". The clip-path hole isn't painted, so the toggle stays untinted. */
   background: var(--help-layer-overlay-bg, transparent);
   /* Cursor over the blocked area only (the toggle shows through the hole and keeps its own cursor).
      e.g. not-allowed / help makes "this won't respond" obvious without needing a tint. */
   cursor: var(--help-layer-overlay-cursor, default);
-  z-index: ${Z_BLOCKING_LAYER};
+  z-index: ${Z_BLOCKING_LAYER} !important;
 }
 
 .help-layer-marker {
@@ -43,11 +46,18 @@ const CSS = `
   margin: 0;
   padding: 0;
   border: none;
-  position: absolute;
+  /* Structural properties are !important so a host's broad rules (e.g. button { display:none }) can't
+     hide or distort the marker. top/left stay non-important because place() writes them inline per
+     frame; !important there would override that and pin the marker to 0,0. Theme stays var()-driven. */
+  position: absolute !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   top: 0;
   left: 0;
-  width: var(--help-layer-marker-size, 22px);
-  height: var(--help-layer-marker-size, 22px);
+  width: var(--help-layer-marker-size, 22px) !important;
+  height: var(--help-layer-marker-size, 22px) !important;
   border-radius: 50%;
   background: var(--help-layer-marker-bg, #2563eb);
   color: var(--help-layer-marker-color, #fff);
@@ -59,7 +69,7 @@ const CSS = `
   cursor: pointer;
   user-select: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  z-index: ${Z_TOP};
+  z-index: ${Z_TOP} !important;
 }
 
 .help-layer-marker:focus-visible {
@@ -68,7 +78,13 @@ const CSS = `
 }
 
 .help-layer-popup {
-  position: absolute;
+  /* Structural !important guards against host resets; top/left stay inline (place()), and display is
+     deliberately NOT !important here — popup.js toggles it via an inline !important declaration so the
+     open/close state itself can also beat a host rule without this stylesheet fighting the toggle. */
+  position: absolute !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   top: 0;
   left: 0;
   display: none;
@@ -81,7 +97,7 @@ const CSS = `
   font-family: sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  z-index: ${Z_POPUP};
+  z-index: ${Z_POPUP} !important;
 }
 
 .help-layer-popup:focus {
@@ -112,7 +128,10 @@ const CSS = `
   /* reset of the button element */
   appearance: none;
   -webkit-appearance: none;
-  position: absolute;
+  /* Keep the close affordance visible/placed even under host button { ... } rules. */
+  display: block !important;
+  position: absolute !important;
+  pointer-events: auto !important;
   top: 6px;
   right: 6px;
   width: 22px;

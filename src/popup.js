@@ -9,6 +9,7 @@
  */
 import { createPopup } from './dom-builder.js';
 import { anchorPopup } from './floating.js';
+import { safeInvoke } from './safe.js';
 
 /**
  * @param {object} state teardown registry
@@ -22,6 +23,9 @@ import { anchorPopup } from './floating.js';
  */
 export function createPopupController(state, { onClose, render, popupPlacement = 'bottom-start' } = {}) {
   const { root, titleEl, textEl, closeEl } = createPopup();
+  // Drive the open/close state with an inline !important display so it beats both this library's own
+  // stylesheet and any host rule (e.g. div { display:none !important }). Start hidden.
+  root.style.setProperty('display', 'none', 'important');
   document.body.appendChild(root);
 
   // The close (×) button. root is removed on teardown, so explicitly detaching the listener isn't needed.
@@ -45,14 +49,15 @@ export function createPopupController(state, { onClose, render, popupPlacement =
   function open(record, referenceEl) {
     titleEl.textContent = record.title;
     // If render exists, replace the body with a custom Node; otherwise fall back to safe text rendering.
-    const custom = render ? render(record) : null;
+    // A throwing render yields undefined here, so we degrade to the safe textContent path below.
+    const custom = safeInvoke('render', render, record);
     textEl.textContent = '';
     if (custom) {
       textEl.appendChild(custom);
     } else {
       textEl.textContent = record.text;
     }
-    root.style.display = 'block';
+    root.style.setProperty('display', 'block', 'important');
     openId = record.id;
     triggerEl = referenceEl;
 
@@ -79,9 +84,9 @@ export function createPopupController(state, { onClose, render, popupPlacement =
     stopAnchor();
     openId = null;
     triggerEl = null;
-    root.style.display = 'none';
-    if (wasOpen && onClose) {
-      onClose();
+    root.style.setProperty('display', 'none', 'important');
+    if (wasOpen) {
+      safeInvoke('onClose', onClose);
     }
   }
 

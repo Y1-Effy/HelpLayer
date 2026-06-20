@@ -4,7 +4,7 @@
  * and aggregates their teardown into the cleanup registry (state).
  */
 import { activateBlockingLayer } from './blocking-layer.js';
-import { normalizeConfig, validateConfig } from './config.js';
+import { isPlainObject, normalizeConfig, validateConfig } from './config.js';
 import { createMarkerManager } from './markers.js';
 import {
   collectElementRecords,
@@ -15,49 +15,65 @@ import {
 } from './matcher.js';
 import { createMutationWatcher } from './observer.js';
 import { createPopupController } from './popup.js';
+import { safeInvoke } from './safe.js';
 import { createState } from './state.js';
 import { injectStyles, removeStyles } from './style.js';
 
 function resolveToggleElement(toggle) {
-  const toggleEl = typeof toggle === 'string' ? document.querySelector(toggle) : toggle;
-  if (!toggleEl) {
-    throw new Error(`help-layer: toggle element not found for selector "${toggle}"`);
+  if (typeof toggle === 'string') {
+    const el = document.querySelector(toggle);
+    if (!el) {
+      throw new Error(`help-layer: toggle element not found for selector "${toggle}"`);
+    }
+    return /** @type {HTMLElement} */ (el);
   }
-  return toggleEl;
+  // Reject truthy garbage (a number, a plain object, ...) early; otherwise it would be accepted as a
+  // toggle and only blow up cryptically later at toggleEl.addEventListener.
+  if (toggle instanceof HTMLElement) {
+    return toggle;
+  }
+  throw new Error('help-layer: toggle must be a CSS selector string or a DOM element');
 }
 
 /**
- * @param {object} params
- * @param {object} params.config helpConfig
- * @param {string|HTMLElement} [params.toggle] DOM element that switches ON/OFF (if omitted, programmatic control only)
- * @param {() => void} [params.onEnable] called right after the mode is turned ON
- * @param {() => void} [params.onDisable] called right after the mode is turned OFF
- * @param {(record: import('./matcher.js').HelpRecord) => void} [params.onOpen] called when a popup is opened
- * @param {() => void} [params.onClose] called when a popup is closed
- * @param {boolean} [params.silent] suppress the warning log for unregistered keys
- * @param {string} [params.attribute] attribute name marking targets (default 'data-help-id')
- * @param {(record: import('./matcher.js').HelpRecord) => (Node|null|undefined)} [params.render] render the popup body with your own Node
+ * @param {object} options
+ * @param {object} options.config helpConfig
+ * @param {string|HTMLElement} [options.toggle] DOM element that switches ON/OFF (if omitted, programmatic control only)
+ * @param {() => void} [options.onEnable] called right after the mode is turned ON
+ * @param {() => void} [options.onDisable] called right after the mode is turned OFF
+ * @param {(record: import('./matcher.js').HelpRecord) => void} [options.onOpen] called when a popup is opened
+ * @param {() => void} [options.onClose] called when a popup is closed
+ * @param {boolean} [options.silent] suppress the warning log for unregistered keys
+ * @param {string} [options.attribute] attribute name marking targets (default 'data-help-id')
+ * @param {(record: import('./matcher.js').HelpRecord) => (Node|null|undefined)} [options.render] render the popup body with your own Node
  *   (the return value is inserted as-is without sanitization, so untrusted data must be neutralized by the caller)
- * @param {string} [params.markerLabel] character shown on the marker (default '?')
- * @param {import('@floating-ui/dom').Placement} [params.markerPlacement] corner to overlap the marker onto (default 'top-end')
- * @param {import('@floating-ui/dom').Placement} [params.popupPlacement] initial popup placement (default 'bottom-start')
- * @param {string} [params.nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
+ * @param {string} [options.markerLabel] character shown on the marker (default '?')
+ * @param {import('@floating-ui/dom').Placement} [options.markerPlacement] corner to overlap the marker onto (default 'top-end')
+ * @param {import('@floating-ui/dom').Placement} [options.popupPlacement] initial popup placement (default 'bottom-start')
+ * @param {string} [options.nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
  */
-export function createToggleController({
-  config,
-  toggle,
-  onEnable,
-  onDisable,
-  onOpen,
-  onClose,
-  silent = false,
-  attribute = 'data-help-id',
-  render,
-  markerLabel = '?',
-  markerPlacement = 'top-end',
-  popupPlacement = 'bottom-start',
-  nonce,
-}) {
+export function createToggleController(options) {
+  // Validate before destructuring so initHelpLayer() / initHelpLayer(null) get a clear message
+  // instead of a cryptic "Cannot destructure property 'config' of undefined".
+  if (!isPlainObject(options)) {
+    throw new Error('help-layer: initHelpLayer requires an options object');
+  }
+  const {
+    config,
+    toggle,
+    onEnable,
+    onDisable,
+    onOpen,
+    onClose,
+    silent = false,
+    attribute = 'data-help-id',
+    render,
+    markerLabel = '?',
+    markerPlacement = 'top-end',
+    popupPlacement = 'bottom-start',
+    nonce,
+  } = options;
+
   let activeConfig = config;
   validateConfig(activeConfig);
   // The toggle element is optional. If omitted, it's driven solely by programmatic control like enable()/disable().
@@ -100,9 +116,7 @@ export function createToggleController({
           return;
         }
         popup.open(record, markerEl);
-        if (onOpen) {
-          onOpen(record);
-        }
+        safeInvoke('onOpen', onOpen, record);
       },
       // When overlap avoidance moves a marker, make the open popup follow.
       onOverlapResolved: () => popup.reposition(),
@@ -165,9 +179,7 @@ export function createToggleController({
       return;
     }
     turnOn();
-    if (onEnable) {
-      onEnable();
-    }
+    safeInvoke('onEnable', onEnable);
   }
 
   function disable() {
@@ -175,9 +187,7 @@ export function createToggleController({
       return;
     }
     turnOff();
-    if (onDisable) {
-      onDisable();
-    }
+    safeInvoke('onDisable', onDisable);
   }
 
   function toggleMode() {
@@ -204,9 +214,7 @@ export function createToggleController({
       return;
     }
     popup.open(entry.record, entry.el);
-    if (onOpen) {
-      onOpen(entry.record);
-    }
+    safeInvoke('onOpen', onOpen, entry.record);
   }
 
   // Close the open description (does not turn the mode itself OFF).

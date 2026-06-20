@@ -9,6 +9,8 @@
  * elements and mounts/unmounts markers dynamically.
  */
 
+import { safeInvoke } from './safe.js';
+
 const ELEMENT_NODE = 1;
 
 /**
@@ -115,11 +117,13 @@ export function createMutationWatcher({ root = document, selector, onAdded, onRe
       // For added nodes, get both "matching elements" and "shadowRoots to start observing" in one traversal per subtree.
       record.addedNodes.forEach((node) => {
         const { matches, shadowRoots } = scanSubtree(node, selector);
-        matches.forEach((el) => onAdded(el));
+        // Isolate each callback: a throw on one element must not abort the rest of the batch nor
+        // kill ongoing observation (which would silently stop all later SPA tracking).
+        matches.forEach((el) => safeInvoke('observer onAdded', onAdded, el));
         shadowRoots.forEach(observe);
       });
       record.removedNodes.forEach((node) => {
-        scanSubtree(node, selector).matches.forEach((el) => onRemoved(el));
+        scanSubtree(node, selector).matches.forEach((el) => safeInvoke('observer onRemoved', onRemoved, el));
       });
     }
   };

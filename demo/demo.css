@@ -1,0 +1,264 @@
+body {
+  --help-layer-marker-size: 24px;
+  --help-layer-marker-bg: #0f6bff;
+  --help-layer-marker-color: #fff;
+  --help-layer-accent: #0f6bff;
+  /* 解説モード中は背面を薄く暗転＋カーソルを not-allowed にして「操作不能」を可視化 */
+  --help-layer-overlay-bg: rgba(15, 23, 42, 0.12);
+  --help-layer-overlay-cursor: not-allowed;
+
+  margin: 0;
+  font-family: sans-serif;
+  background: #f5f6f8;
+  color: #1f2933;
+}
+
+.demo-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background: #1f2933;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  /* 解説モードのトグルはアプリのモーダル(z-index:1000)より上に置く */
+  z-index: 2000;
+}
+
+.demo-app {
+  max-width: 640px;
+  margin: 72px auto 0;
+  padding: 0 24px 40px;
+  box-sizing: border-box;
+}
+
+.demo-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.demo-nav a {
+  color: #1f2933;
+  text-decoration: none;
+  background: #e4e7eb;
+  border-radius: 4px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.demo-nav a[aria-current="page"] {
+  background: #1f2933;
+  color: #fff;
+}
+
+/* Language switcher (demo-only; pushed to the right end of the nav) */
+.demo-lang {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.demo-lang__btn {
+  appearance: none;
+  border: 1px solid #cbd2d9;
+  background: #fff;
+  color: #1f2933;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.demo-lang__btn[aria-pressed="true"] {
+  background: #1f2933;
+  color: #fff;
+  border-color: #1f2933;
+}
+
+.demo-app h1 {
+  font-size: 20px;
+}
+
+.demo-card {
+  background: #fff;
+  padding: 16px 24px 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+}
+
+.demo-card h2 {
+  font-size: 15px;
+  color: #52606d;
+}
+
+.demo-field {
+  margin-bottom: 16px;
+}
+
+.demo-field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #52606d;
+}
+
+.demo-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd2d9;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.demo-btn {
+  padding: 8px 16px;
+  background: #e4e7eb;
+  color: #1f2933;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.demo-btn--primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.demo-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.demo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.demo-toolbar .demo-btn {
+  margin-right: 0;
+}
+
+.demo-meter {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 13px;
+  color: #52606d;
+}
+
+.demo-mini-label {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 13px;
+  color: #52606d;
+}
+
+.demo-mini-input {
+  width: 180px;
+  padding: 7px 8px;
+  border: 1px solid #cbd2d9;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.demo-log {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.demo-log__title {
+  font-size: 12px;
+  color: #52606d;
+  margin-bottom: 6px;
+}
+
+.demo-log ol {
+  min-height: 22px;
+  max-height: 110px;
+  overflow: auto;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: #1f2933;
+}
+
+.demo-log li {
+  margin-bottom: 3px;
+}
+
+/* 内側スクロールコンテナ（外側windowとは別にスクロールする） */
+.demo-scroll {
+  height: 160px;
+  overflow: auto;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.demo-spacer {
+  height: 120px;
+}
+
+.demo-spacer-tall {
+  height: 600px;
+}
+
+.demo-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.demo-list li {
+  margin-bottom: 8px;
+}
+
+/* 画面下部の固定バー（position: fixed） */
+.demo-fixedbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 24px;
+  background: #1f2933;
+  z-index: 5;
+}
+
+.demo-fixedbar .demo-btn {
+  margin: 0;
+}
+
+/* モーダル（高いスタッキングコンテキスト） */
+.demo-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.demo-modal[hidden] {
+  display: none;
+}
+
+.demo-modal__panel {
+  background: #fff;
+  padding: 24px 32px;
+  border-radius: 8px;
+  width: 320px;
+}

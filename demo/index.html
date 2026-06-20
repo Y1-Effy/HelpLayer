@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HelpLayer Demo</title>
+<link rel="stylesheet" href="demo.css">
+<!--
+  Browsers can't resolve bare imports (e.g. '@floating-ui/dom') on their own, so an import map
+  points them at the local ESM files inside node_modules. Everything runs fully locally (no external
+  requests / no CDN).
+-->
+<script type="importmap">
+{
+  "imports": {
+    "@floating-ui/dom": "/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
+    "@floating-ui/core": "/node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
+    "@floating-ui/utils": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
+    "@floating-ui/utils/dom": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs"
+  }
+}
+</script>
+</head>
+<body>
+<button id="help-layer-toggle" class="demo-toggle" type="button">Help mode</button>
+
+<main class="demo-app">
+  <nav class="demo-nav" aria-label="Switch demo">
+    <a href="/demo/" aria-current="page">Vanilla</a>
+    <a href="/demo/react.html">React</a>
+    <a href="/demo/vue.html">Vue</a>
+    <div id="demo-lang-slot" class="demo-lang-slot"></div>
+  </nav>
+
+  <h1 data-i18n="appTitle">Admin screen sample</h1>
+
+  <section class="demo-card">
+    <h2 data-i18n="formTitle">Basic form</h2>
+    <div class="demo-field">
+      <label for="username-input" data-i18n="usernameLabel">Username</label>
+      <input type="text" id="username-input" data-help-id="username" value="Jane Doe">
+    </div>
+    <button type="button" data-help-id="save" class="demo-btn demo-btn--primary" data-i18n="saveBtn">Save</button>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="scrollTitle">Inner scroll container</h2>
+    <div class="demo-scroll">
+      <p data-i18n="scrollTop">Dummy content at the top. Scroll down and the button appears.</p>
+      <div class="demo-spacer"></div>
+      <button type="button" data-help-id="inneritem" class="demo-btn" data-i18n="scrollBtn">Button inside the scroll</button>
+      <div class="demo-spacer"></div>
+      <p data-i18n="scrollBottom">Dummy content at the bottom.</p>
+    </div>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="dynamicTitle">Dynamic elements (SPA-style)</h2>
+    <p data-i18n="dynamicDesc">Markers follow even when rows are added/removed while help mode is ON.</p>
+    <button type="button" id="demo-add" class="demo-btn" data-i18n="addRow">Add row</button>
+    <button type="button" id="demo-remove" class="demo-btn" data-i18n="removeRow">Remove row</button>
+    <ul id="demo-dynamic-list" class="demo-list"></ul>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="modalShadowTitle">Modal / Shadow DOM</h2>
+    <button type="button" id="demo-open-modal" class="demo-btn" data-i18n="openModal">Open modal</button>
+    <div id="shadow-host"></div>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="inlineRichTitle">Inline definition / rich body</h2>
+    <p data-i18n="inlineRichDesc">The left button has no config entry — its description comes from data attributes only. The middle shows line breaks in the body; the right uses custom rendering via render.</p>
+    <button type="button"
+      id="demo-inline-btn"
+      data-help-title="Inline definition"
+      data-help-text="This description is written directly in the data-help-title / data-help-text attributes. No config object needed."
+      class="demo-btn" data-i18n="inlineBtn">Inline definition</button>
+    <button type="button" data-help-id="multiline" class="demo-btn" data-i18n="multilineBtn">Multi-line description</button>
+    <button type="button" data-help-id="richlink" class="demo-btn" data-i18n="richlinkBtn">render (link)</button>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="blockingTitle">Verifying interaction blocking</h2>
+    <p data-i18n="blockingDesc">With help mode OFF the counter increments. While ON you can verify that interactions don't reach the host app.</p>
+    <div class="demo-grid">
+      <div>
+        <button type="button" id="demo-host-click" data-help-id="hostevent" class="demo-btn" data-i18n="hostClickBtn">Host-side click</button>
+        <span class="demo-meter">click: <strong id="demo-click-count">0</strong></span>
+      </div>
+      <div>
+        <label class="demo-mini-label" for="demo-host-key" data-i18n="keyLabel">Key input</label>
+        <input id="demo-host-key" data-help-id="keyevent" class="demo-mini-input" type="text" value="">
+        <span class="demo-meter">key: <strong id="demo-key-count">0</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo-card">
+    <h2 data-i18n="apiTitle">Public API / callbacks</h2>
+    <p data-i18n="apiDesc">Try open / close / update from the API and watch each callback fire.</p>
+    <div class="demo-toolbar">
+      <button type="button" id="demo-api-open" class="demo-btn">open("apitarget")</button>
+      <button type="button" id="demo-api-close" class="demo-btn">close()</button>
+      <button type="button" id="demo-api-update" class="demo-btn">update(config)</button>
+      <button type="button" id="demo-api-sequence" class="demo-btn demo-btn--primary" data-i18n="apiSequence">API sequence</button>
+    </div>
+    <button type="button" data-help-id="apitarget" class="demo-btn" data-i18n="apiTargetBtn">API target button</button>
+    <div class="demo-log" aria-live="polite">
+      <div class="demo-log__title">callback log</div>
+      <ol id="demo-callback-log"></ol>
+    </div>
+  </section>
+
+  <div class="demo-spacer-tall"></div>
+</main>
+
+<!-- A bar pinned to the bottom of the screen (position: fixed) -->
+<div class="demo-fixedbar">
+  <button type="button" data-help-id="fixedbar" class="demo-btn" data-i18n="fixedbarBtn">Fixed-bar action</button>
+</div>
+
+<!-- Modal (host app UI; opened/closed while help mode is OFF) -->
+<div id="demo-modal" class="demo-modal" hidden>
+  <div class="demo-modal__panel">
+    <h2 data-i18n="modalTitle">Settings modal</h2>
+    <div class="demo-field">
+      <label for="modal-field" data-i18n="modalFieldLabel">Field inside the modal</label>
+      <input type="text" id="modal-field" data-help-id="modalfield" value="Default value">
+    </div>
+    <button type="button" id="demo-close-modal" class="demo-btn" data-i18n="closeModal">Close</button>
+  </div>
+</div>
+
+<script type="module" src="demo-app.js"></script>
+</body>
+</html>

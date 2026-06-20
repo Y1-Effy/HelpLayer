@@ -1,0 +1,14 @@
+{
+  "//": "JSDoc を活かした型チェック専用設定。ソースに TS 構文は足さない（npm run typecheck）。",
+  "compilerOptions": {
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom"],
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.js"]
+}

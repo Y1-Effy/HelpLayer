@@ -1,0 +1,81 @@
+{
+  "name": "help-layer",
+  "version": "1.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "src/index.js",
+  "unpkg": "dist/help-layer.iife.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "build:bundle": "node scripts/build.js",
+    "build:types": "tsc -p jsconfig.json --declaration --emitDeclarationOnly --noEmit false --rootDir src --outDir dist/types",
+    "build": "npm run build:bundle && npm run build:types",
+    "prepublishOnly": "npm run build",
+    "demo": "node scripts/serve.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-n": "^17.24.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^6.0.3",
+    "vue": "^3.5.38"
+  },
+  "keywords": [
+    "help-layer",
+    "tooltip",
+    "onboarding",
+    "walkthrough",
+    "guide",
+    "annotation",
+    "accessibility",
+    "a11y",
+    "shadow-dom",
+    "framework-agnostic"
+  ],
+  "author": "Y1-Effy",
+  "license": "ISC",
+  "description": "Framework-agnostic, drop-in help mode for existing web apps — toggleable help markers with description popups, Shadow DOM piercing, and full cleanup.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Y1-Effy/HelpLayer.git"
+  },
+  "homepage": "https://github.com/Y1-Effy/HelpLayer#readme",
+  "bugs": {
+    "url": "https://github.com/Y1-Effy/HelpLayer/issues"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.7.6"
+  }
+}

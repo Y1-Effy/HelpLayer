@@ -1,0 +1,182 @@
+/** @jest-environment jsdom */
+import { jest } from '@jest/globals';
+
+const anchorUpdate = jest.fn();
+const anchorCleanup = jest.fn();
+const anchorPopup = jest.fn(() => ({ update: anchorUpdate, cleanup: anchorCleanup }));
+jest.unstable_mockModule('../src/floating.js', () => ({
+  anchorPopup,
+  anchorMarker: jest.fn(() => jest.fn()),
+  makeVirtualElement: jest.fn(),
+  watchReference: jest.fn(() => jest.fn()),
+}));
+
+const { createPopupController } = await import('../src/popup.js');
+const { createState } = await import('../src/state.js');
+
+beforeEach(() => {
+  anchorUpdate.mockClear();
+  anchorCleanup.mockClear();
+  anchorPopup.mockClear();
+});
+
+afterEach(() => {
+  document.body.innerHTML = '';
+});
+
+const record = { id: 'r1', title: 'Title', text: 'Body' };
+
+describe('createPopupController', () => {
+  it('sets content, shows and focuses on open, and anchors to the target', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+
+    expect(popup.root.style.display).toBe('block');
+    expect(popup.root.querySelector('.help-layer-popup__title').textContent).toBe('Title');
+    expect(popup.isOpen('r1')).toBe(true);
+    expect(popup.getOpenId()).toBe('r1');
+    expect(anchorPopup).toHaveBeenCalledWith(marker, popup.root, 'bottom-start');
+    expect(document.activeElement).toBe(popup.root);
+  });
+
+  it('closes when the close (×) button is clicked', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    expect(popup.getOpenId()).toBe('r1');
+
+    const closeBtn = popup.root.querySelector('.help-layer-popup__close');
+    closeBtn.click();
+
+    expect(popup.getOpenId()).toBeNull();
+    expect(popup.root.style.display).toBe('none');
+  });
+
+  it('replaces the body with what render returns when it returns a Node', () => {
+    const link = document.createElement('a');
+    link.href = 'https://example.com';
+    link.textContent = 'Learn more';
+    const render = jest.fn(() => link);
+
+    const state = createState();
+    const popup = createPopupController(state, { render });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+
+    expect(render).toHaveBeenCalledWith(record);
+    const textEl = popup.root.querySelector('.help-layer-popup__text');
+    expect(textEl.querySelector('a')).toBe(link);
+    expect(textEl.textContent).toBe('Learn more');
+  });
+
+  it('falls back to safe text rendering for the body when there is no render', () => {
+    const state = createState();
+    const popup = createPopupController(state, { render: () => null });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+
+    const textEl = popup.root.querySelector('.help-layer-popup__text');
+    expect(textEl.textContent).toBe('Body');
+    expect(textEl.querySelector('*')).toBeNull();
+  });
+
+  it('passes popupPlacement to anchorPopup', () => {
+    const state = createState();
+    const popup = createPopupController(state, { popupPlacement: 'right-start' });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+
+    expect(anchorPopup).toHaveBeenCalledWith(marker, popup.root, 'right-start');
+  });
+
+  it('on close, detaches the anchor, hides, and returns focus to the trigger', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    popup.close();
+
+    expect(popup.root.style.display).toBe('none');
+    expect(popup.getOpenId()).toBeNull();
+    expect(anchorCleanup).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(marker);
+  });
+
+  it('can pass an explicit focus-return target to close (#5)', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    const toggle = document.createElement('button');
+    document.body.append(marker, toggle);
+
+    popup.open(record, marker);
+    popup.close(toggle);
+
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it('reposition updates the anchor only while open (#2)', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.reposition();
+    expect(anchorUpdate).not.toHaveBeenCalled();
+
+    popup.open(record, marker);
+    popup.reposition();
+    expect(anchorUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the popup on teardown', () => {
+    const state = createState();
+    createPopupController(state);
+    expect(document.querySelector('.help-layer-popup')).not.toBeNull();
+
+    state.teardownAll();
+    expect(document.querySelector('.help-layer-popup')).toBeNull();
+  });
+
+  it('onClose fires on close and on "teardown while open", but not when never opened', () => {
+    const onClose = jest.fn();
+    const state = createState();
+    const popup = createPopupController(state, { onClose });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    // fires on close
+    popup.open(record, marker);
+    popup.close();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // fires on teardown while open
+    popup.open(record, marker);
+    state.teardownAll();
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not fire onClose when tearing down without ever opening', () => {
+    const onClose = jest.fn();
+    const state = createState();
+    createPopupController(state, { onClose });
+
+    state.teardownAll();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

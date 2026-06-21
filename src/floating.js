@@ -40,6 +40,37 @@ function place(el, x, y) {
   el.style.top = `${y}px`;
 }
 
+/**
+ * Whether the reference lives in a `position: fixed` subtree. Such a reference stays put in the
+ * viewport while the page scrolls, so an absolutely-positioned floating element (which scrolls with
+ * the document) would have to be re-corrected every frame and visibly jitters. For these we switch the
+ * floating element to Floating UI's `fixed` strategy (and position:fixed) so both live in the same
+ * viewport space and stay glued without per-frame correction.
+ *
+ * Virtual elements (free placements) aren't in the DOM and already track scroll via their getRect, so
+ * they report false. Walks across shadow boundaries via the host so Shadow DOM targets are handled too.
+ * @param {Element|object} reference
+ */
+export function isFixedReference(reference) {
+  if (!(reference instanceof Element)) {
+    return false;
+  }
+  let node = reference;
+  while (node) {
+    if (getComputedStyle(node).position === 'fixed') {
+      return true;
+    }
+    const parent = node.parentElement;
+    if (parent) {
+      node = parent;
+    } else {
+      const root = node.getRootNode();
+      node = root instanceof ShadowRoot ? root.host : null;
+    }
+  }
+  return false;
+}
+
 // Half of the default marker size (22px). The amount used to overlap the marker onto the
 // target's corner with an "inset". (If the marker-size CSS variable is changed, the resulting
 // drift is left as existing behavior = not compensated for here.)
@@ -66,9 +97,17 @@ function markerOffset(placement) {
  * @returns {() => void} cleanup
  */
 export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end') {
+  // Match the floating element's strategy to the reference: a fixed reference needs a fixed marker, or
+  // it jitters while scrolling (see isFixedReference). Inline !important beats the stylesheet's
+  // `position: absolute !important`.
+  const strategy = isFixedReference(reference) ? 'fixed' : 'absolute';
+  if (strategy === 'fixed') {
+    markerEl.style.setProperty('position', 'fixed', 'important');
+  }
   const update = () => {
     computePosition(reference, markerEl, {
       placement,
+      strategy,
       middleware: [offset(markerOffset(placement))],
     }).then(({ x, y }) => {
       place(markerEl, x, y);
@@ -95,9 +134,15 @@ export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end
  *   calling update repositions immediately (used for reference-side transform moves that autoUpdate doesn't pick up, etc.).
  */
 export function anchorPopup(reference, popupEl, placement = 'bottom-start') {
+  // The reference is the clicked marker. If it's fixed (anchored to a fixed target), the popup must be
+  // fixed too or it jitters on scroll. Set position every open so reopening on a normal marker restores
+  // absolute. Inline !important beats the stylesheet's `position: absolute !important`.
+  const strategy = isFixedReference(reference) ? 'fixed' : 'absolute';
+  popupEl.style.setProperty('position', strategy, 'important');
   const update = () => {
     computePosition(reference, popupEl, {
       placement,
+      strategy,
       middleware: [offset(8), flip({ padding: 8 }), shift({ padding: 8 })],
     }).then(({ x, y }) => {
       place(popupEl, x, y);

@@ -32,11 +32,14 @@
     "lint:fix": "eslint src tests --fix",
     "typecheck": "tsc -p jsconfig.json",
     "check": "npm run lint && npm run typecheck && npm test",
+    "build:site": "node demo/build-site.js",
+    "build:demos": "node demo/build-framework-demos.js",
     "build:bundle": "node scripts/build.js",
     "build:types": "tsc -p jsconfig.json --declaration --emitDeclarationOnly --noEmit false --rootDir src --outDir dist/types",
     "build": "npm run build:bundle && npm run build:types",
+    "record:gif": "npm run build:demos && node scripts/record-demo.js",
     "prepublishOnly": "npm run build",
-    "demo": "node scripts/serve.js"
+    "demo": "npm run build:demos && node scripts/serve.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
@@ -45,8 +48,10 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.24.0",
     "eslint-plugin-promise": "^7.2.1",
+    "gifenc": "^1.0.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "pngjs": "^7.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "typescript": "^6.0.3",

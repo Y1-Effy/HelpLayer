@@ -48,7 +48,9 @@ const CSS = `
   border: none;
   /* Structural properties are !important so a host's broad rules (e.g. button { display:none }) can't
      hide or distort the marker. top/left stay non-important because place() writes them inline per
-     frame; !important there would override that and pin the marker to 0,0. Theme stays var()-driven. */
+     frame; !important there would override that and pin the marker to 0,0. Theme stays var()-driven.
+     Note: for targets in a position:fixed subtree, floating.js overrides this with an inline
+     position:fixed !important (inline important beats this rule) so the marker doesn't jitter. */
   position: absolute !important;
   display: block !important;
   visibility: visible !important;

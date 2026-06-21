@@ -2,6 +2,36 @@ import { computed, createApp, nextTick, onBeforeUnmount, onMounted, ref, watch }
 
 import { initHelpLayer } from '../src/index.js';
 import { getLang, setLang, SUPPORTED_LANGS } from './i18n.js';
+import { mountShowcase } from './showcase.js';
+import { showcaseStrings } from './showcase-i18n.js';
+import { injectCodeStyleOnce, copyText } from './code-snippet.js';
+import { mountSiteChrome } from './site-chrome.js';
+
+// Concise, accurate Vue-idiom snippets per card (values illustrative; only labels are i18n'd).
+const SNIPPETS = {
+  form: `const toggleEl = ref(null);
+let help = null;
+
+onMounted(() => {
+  help = initHelpLayer({
+    toggle: toggleEl.value,
+    config: { vueSave: { title: 'Save', text: 'Saves your input.' } },
+  });
+});
+onBeforeUnmount(() => help?.destroy());
+
+<button ref="toggleEl">Help mode</button>
+<button data-help-id="vueSave">Save</button>`,
+  dynamic: `<!-- Markers follow reactive lists via MutationObserver — no extra wiring -->
+<button v-for="r in rows" :key="r" data-help-id="vueDynamic">Row {{ r }}</button>`,
+  api: `help?.open('vueState');  // open programmatically
+help?.close();
+
+// Swap content when the reactive config changes:
+watch(config, (next) => help?.update(next));
+
+// onBeforeUnmount -> destroy() (full teardown).`,
+};
 
 const LANG_LABELS = { en: 'EN', ja: '日本語' };
 
@@ -58,16 +88,16 @@ const UI = {
     heading: 'Vue integration',
     lead: 'A minimal integration pattern: template ref / onMounted / onBeforeUnmount / watch update(config).',
     toggle: 'Help mode',
-    formTitle: 'Form rendered by Vue',
+    formTitle: 'Explain fields in a Vue form',
     nameLabel: 'Name',
     nameValue: 'Jane Doe',
     save: 'Save',
     apiTarget: 'API target',
-    dynamicTitle: 'Dynamic DOM via a reactive list',
+    dynamicTitle: 'Follows a reactive list',
     addRow: 'Add row',
     removeRow: 'Remove row',
     dynamicRow: 'Vue dynamic row',
-    apiTitle: 'API and lifecycle',
+    apiTitle: 'Control & clean up via the API',
     unmount: 'unmount',
     remount: 'remount',
     unmountedNote: 'The component-like demo was unmounted, so destroy() ran and HelpLayer’s DOM and listeners were torn down.',
@@ -77,16 +107,16 @@ const UI = {
     heading: 'Vue integration',
     lead: 'template ref / onMounted / onBeforeUnmount / watch update(config) の最小導入パターンです。',
     toggle: '解説モード',
-    formTitle: 'Vue が描画するフォーム',
+    formTitle: 'Vue フォームの項目を説明',
     nameLabel: '名前',
     nameValue: '山田太郎',
     save: '保存',
     apiTarget: 'API 対象',
-    dynamicTitle: 'reactive list による動的 DOM',
+    dynamicTitle: 'reactive list の変化に追従',
     addRow: '行を追加',
     removeRow: '行を削除',
     dynamicRow: 'Vue 動的行',
-    apiTitle: 'API とライフサイクル',
+    apiTitle: 'API で制御・後始末',
     unmount: 'unmount',
     remount: 'remount',
     unmountedNote: 'コンポーネント相当の demo を unmount したため destroy() が実行され、HelpLayer の DOM とリスナーは破棄されています。',
@@ -108,16 +138,38 @@ createApp({
     const mounted = ref(true);
     const toggleEl = ref(null);
     const help = ref(null);
+    const showcase = ref(null);
     const rows = ref([1]);
     const variant = ref(false);
     const events = ref([]);
     const lang = ref(getLang());
     const t = computed(() => UI[lang.value] ?? UI.en);
+    const sc = computed(() => showcaseStrings(lang.value));
+
+    // "Show the code" blocks: shared styles + copy with brief per-block feedback.
+    injectCodeStyleOnce();
+    // Shared footer (adoption path); body-level, so unaffected by component unmount/remount.
+    const siteChrome = mountSiteChrome(lang.value);
+    const copiedKey = ref(null);
+    const copy = async(key, code) => {
+      if (await copyText(code)) {
+        copiedKey.value = key;
+        setTimeout(() => {
+          if (copiedKey.value === key) {
+            copiedKey.value = null;
+          }
+        }, 1200);
+      }
+    };
     const config = computed(() => buildConfig(variant.value, lang.value));
 
+    let eventId = 0;
     const appendEvent = (message) => {
+      // Key list rows by a monotonic id: identical messages can share a second, so a "timestamp + text"
+      // string isn't unique enough and would trigger a duplicate-key warning.
+      eventId += 1;
       events.value = [
-        `${new Date().toLocaleTimeString()} ${message}`,
+        { id: eventId, text: `${new Date().toLocaleTimeString()} ${message}` },
         ...events.value.slice(0, 5),
       ];
     };
@@ -133,20 +185,29 @@ createApp({
         markerLabel: 'V',
         onEnable: () => {
           toggleEl.value?.setAttribute('aria-pressed', 'true');
+          showcase.value?.handleEnable();
           appendEvent('onEnable');
         },
         onDisable: () => {
           toggleEl.value?.setAttribute('aria-pressed', 'false');
+          showcase.value?.handleDisable();
           appendEvent('onDisable');
         },
-        onOpen: (record) => appendEvent(`onOpen: ${record.key}`),
+        onOpen: (record) => {
+          showcase.value?.handleOpen();
+          appendEvent(`onOpen: ${record.key}`);
+        },
         onClose: () => appendEvent('onClose'),
       });
+      // Demo-only value layer (first-run coach + status pill). Overlay chrome; library untouched.
+      showcase.value = mountShowcase({ toggleEl: toggleEl.value, lang: lang.value });
     };
 
     const destroyHelp = () => {
       help.value?.destroy();
       help.value = null;
+      showcase.value?.destroy();
+      showcase.value = null;
       delete document.body.dataset.demoTheme;
     };
 
@@ -160,6 +221,8 @@ createApp({
 
     watch(lang, (next) => {
       document.documentElement.lang = next;
+      showcase.value?.setLang(next);
+      siteChrome.setLang(next);
     }, { immediate: true });
 
     const changeLang = (code) => {
@@ -195,6 +258,10 @@ createApp({
       remountDemo,
       removeRow,
       rows,
+      sc,
+      snippets: SNIPPETS,
+      copy,
+      copiedKey,
       t,
       toggleEl,
       unmountDemo,
@@ -204,9 +271,9 @@ createApp({
   template: `
     <div class="framework-shell">
       <nav class="framework-nav" :aria-label="t.nav">
-        <a href="/demo/">Vanilla</a>
-        <a href="/demo/react.html">React</a>
-        <a href="/demo/vue.html" aria-current="page">Vue</a>
+        <a href="./">Vanilla</a>
+        <a href="./react.html">React</a>
+        <a href="./vue.html" aria-current="page">Vue</a>
         <div class="demo-lang" role="group" aria-label="Language">
           <button v-for="code in langs" :key="code" type="button" class="demo-lang__btn"
             :aria-pressed="String(code === lang)" @click="changeLang(code)">{{ langLabels[code] }}</button>
@@ -224,6 +291,7 @@ createApp({
           <div>
             <h1>{{ t.heading }}</h1>
             <p>{{ t.lead }}</p>
+            <p class="framework-tagline">{{ sc.heroTagline }}</p>
           </div>
           <button ref="toggleEl" class="framework-toggle" type="button" aria-pressed="false">{{ t.toggle }}</button>
         </header>
@@ -236,6 +304,13 @@ createApp({
           </div>
           <button class="framework-btn framework-btn--primary" type="button" data-help-id="vueSave">{{ t.save }}</button>
           <button class="framework-btn" type="button" data-help-id="vueState">{{ t.apiTarget }}</button>
+          <details class="demo-code">
+            <summary>{{ sc.showCode }}</summary>
+            <div class="demo-code__body">
+              <button type="button" class="demo-code__copy" @click="copy('form', snippets.form)">{{ copiedKey === 'form' ? sc.copied : sc.copy }}</button>
+              <pre><code>{{ snippets.form }}</code></pre>
+            </div>
+          </details>
         </section>
 
         <section class="framework-card">
@@ -247,6 +322,13 @@ createApp({
               <button class="framework-btn" type="button" data-help-id="vueDynamic">{{ t.dynamicRow }} {{ row }}</button>
             </li>
           </ul>
+          <details class="demo-code">
+            <summary>{{ sc.showCode }}</summary>
+            <div class="demo-code__body">
+              <button type="button" class="demo-code__copy" @click="copy('dynamic', snippets.dynamic)">{{ copiedKey === 'dynamic' ? sc.copied : sc.copy }}</button>
+              <pre><code>{{ snippets.dynamic }}</code></pre>
+            </div>
+          </details>
         </section>
 
         <section class="framework-card">
@@ -256,8 +338,15 @@ createApp({
           <button class="framework-btn" type="button" @click="variant = !variant">update(config)</button>
           <button class="framework-btn" type="button" @click="unmountDemo">{{ t.unmount }}</button>
           <div class="framework-log" aria-live="polite">
-            <p v-for="event in events" :key="event">{{ event }}</p>
+            <p v-for="event in events" :key="event.id">{{ event.text }}</p>
           </div>
+          <details class="demo-code">
+            <summary>{{ sc.showCode }}</summary>
+            <div class="demo-code__body">
+              <button type="button" class="demo-code__copy" @click="copy('api', snippets.api)">{{ copiedKey === 'api' ? sc.copied : sc.copy }}</button>
+              <pre><code>{{ snippets.api }}</code></pre>
+            </div>
+          </details>
         </section>
       </template>
     </div>

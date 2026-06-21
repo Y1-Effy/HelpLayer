@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: sans-serif;
-  background: #f4f7fb;
+  background: #f5f6f8;
   color: #1f2933;
 }
 
@@ -20,9 +20,10 @@ body[data-demo-theme="vue"] {
 }
 
 .framework-shell {
-  max-width: 760px;
-  margin: 48px auto;
+  max-width: 720px;
+  margin: 72px auto 48px;
   padding: 0 24px 48px;
+  box-sizing: border-box;
 }
 
 .framework-nav {
@@ -89,8 +90,20 @@ body[data-demo-theme="vue"] {
   line-height: 1.6;
 }
 
+/* Shared hero pitch (demo "value layer"). */
+.framework-tagline {
+  margin-top: 8px !important;
+  font-weight: 600;
+  color: #1f2933 !important;
+}
+
 .framework-toggle {
-  flex: 0 0 auto;
+  /* Fixed top-right, matching the Vanilla demo, so the toggle stays reachable while scrolling
+     (and all three demos look consistent). */
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2000;
   padding: 8px 16px;
   background: #1f2933;
   color: #fff;

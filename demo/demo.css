@@ -29,7 +29,7 @@ body {
 }
 
 .demo-app {
-  max-width: 640px;
+  max-width: 720px;
   margin: 72px auto 0;
   padding: 0 24px 40px;
   box-sizing: border-box;
@@ -81,6 +81,26 @@ body {
 
 .demo-app h1 {
   font-size: 20px;
+  margin-bottom: 4px;
+}
+
+/* Hero pitch under the page title (demo "value layer"). */
+.demo-hero {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.demo-hero__tagline {
+  display: block;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.demo-hero__hint {
+  display: block;
+  margin-top: 2px;
+  color: #52606d;
 }
 
 .demo-card {
@@ -210,10 +230,6 @@ body {
 
 .demo-spacer {
   height: 120px;
-}
-
-.demo-spacer-tall {
-  height: 600px;
 }
 
 .demo-list {

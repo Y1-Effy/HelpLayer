@@ -36,6 +36,8 @@ describe('createPopupController', () => {
     popup.open(record, marker);
 
     expect(popup.root.style.display).toBe('block');
+    // The display toggle is set with !important so a host rule can't hide the open popup.
+    expect(popup.root.style.getPropertyPriority('display')).toBe('important');
     expect(popup.root.querySelector('.help-layer-popup__title').textContent).toBe('Title');
     expect(popup.isOpen('r1')).toBe(true);
     expect(popup.getOpenId()).toBe('r1');
@@ -178,5 +180,45 @@ describe('createPopupController', () => {
 
     state.teardownAll();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('still removes the popup on teardown when a user onClose throws', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onClose = jest.fn(() => { throw new Error('user bug'); });
+    const state = createState();
+    const popup = createPopupController(state, { onClose });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    // The throwing onClose runs inside the popup's own teardown, right before root.remove().
+    expect(() => state.teardownAll()).not.toThrow();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.help-layer-popup')).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith('[help-layer] onClose threw:', expect.any(Error));
+
+    errorSpy.mockRestore();
+  });
+
+  it('falls back to safe text rendering when render throws', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const render = jest.fn(() => { throw new Error('render bug'); });
+    const state = createState();
+    const popup = createPopupController(state, { render });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    expect(() => popup.open(record, marker)).not.toThrow();
+
+    // The popup still opens, falling back to the safe textContent path.
+    expect(popup.root.style.display).toBe('block');
+    expect(popup.isOpen('r1')).toBe(true);
+    const textEl = popup.root.querySelector('.help-layer-popup__text');
+    expect(textEl.textContent).toBe('Body');
+    expect(textEl.querySelector('*')).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith('[help-layer] render threw:', expect.any(Error));
+
+    errorSpy.mockRestore();
   });
 });

@@ -116,6 +116,82 @@ describe('createToggleController', () => {
     controller.destroy();
   });
 
+  it('closes the open popup when its target element is removed while ON', async() => {
+    const onClose = jest.fn();
+    const controller = createToggleController({ config, toggle: toggleEl, onClose });
+    const target = document.querySelector('[data-help-id="save"]');
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    target.remove();
+    await tick();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(markerCount()).toBe(1); // only the free placement remains
+
+    controller.destroy();
+  });
+
+  it('enable() is idempotent: a second call does not re-mount the subsystems', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    expect(markerCount()).toBe(2);
+
+    controller.enable(); // no-op while already ON
+
+    expect(markerCount()).toBe(2); // not doubled
+    expect(document.querySelectorAll('.help-layer-blocking-layer')).toHaveLength(1);
+
+    controller.destroy();
+  });
+
+  it('Escape disables the mode when no popup is open', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    expect(controller.isActive()).toBe(true);
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+
+    expect(controller.isActive()).toBe(false);
+    expect(markerCount()).toBe(0);
+
+    controller.destroy();
+  });
+
+  it('Escape only closes the open popup, keeping the mode ON', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(controller.isActive()).toBe(true);
+
+    controller.destroy();
+  });
+
+  it('clicking the blocking layer background closes the open popup', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    document.querySelector('.help-layer-blocking-layer').click();
+
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('none');
+    expect(controller.isActive()).toBe(true);
+
+    controller.destroy();
+  });
+
   it('warns about and ignores an unregistered data-help-id', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const ghost = document.createElement('button');
@@ -147,6 +223,23 @@ describe('createToggleController', () => {
 
   it('throws when the toggle is not found', () => {
     expect(() => createToggleController({ config, toggle: '#missing' })).toThrow();
+  });
+
+  it('throws a clear error when called without an options object', () => {
+    expect(() => createToggleController()).toThrow(/options object/);
+    expect(() => createToggleController(null)).toThrow(/options object/);
+  });
+
+  it('throws when toggle is neither a selector string nor a DOM element', () => {
+    expect(() => createToggleController({ config, toggle: 5 })).toThrow(/toggle must be/);
+    expect(() => createToggleController({ config, toggle: {} })).toThrow(/toggle must be/);
+  });
+
+  it('accepts a DOM element as the toggle', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    toggleEl.click();
+    expect(controller.isActive()).toBe(true);
+    controller.destroy();
   });
 
   it('can be controlled programmatically via enable/disable/isActive', () => {
@@ -209,6 +302,51 @@ describe('createToggleController', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
 
     controller.destroy();
+  });
+
+  it('fully tears down even when a user onClose throws while a popup is open', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onClose = jest.fn(() => { throw new Error('user bug'); });
+    const controller = createToggleController({ config, toggle: toggleEl, onClose });
+    controller.enable();
+    controller.open('save');
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    // destroy() -> disable() -> teardownAll(), which closes the popup (firing the throwing onClose).
+    // A throw must not strand the markers, blocking layer, or injected styles.
+    expect(() => controller.destroy()).not.toThrow();
+
+    expect(controller.isActive()).toBe(false);
+    expect(markerCount()).toBe(0);
+    expect(document.querySelector('.help-layer-blocking-layer')).toBeNull();
+    expect(document.querySelector('.help-layer-popup')).toBeNull();
+    expect(document.head.querySelector('[data-help-layer-style]')).toBeNull();
+
+    errorSpy.mockRestore();
+  });
+
+  it('a throwing onEnable/onDisable/onOpen does not break the control flow', () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const onEnable = jest.fn(() => { throw new Error('enable bug'); });
+    const onDisable = jest.fn(() => { throw new Error('disable bug'); });
+    const onOpen = jest.fn(() => { throw new Error('open bug'); });
+    const controller = createToggleController({
+      config, toggle: toggleEl, onEnable, onDisable, onOpen,
+    });
+
+    expect(() => controller.enable()).not.toThrow();
+    expect(controller.isActive()).toBe(true);
+    expect(markerCount()).toBe(2);
+
+    expect(() => controller.open('save')).not.toThrow();
+    expect(document.querySelector('.help-layer-popup').style.display).toBe('block');
+
+    expect(() => controller.disable()).not.toThrow();
+    expect(controller.isActive()).toBe(false);
+    expect(markerCount()).toBe(0);
+
+    controller.destroy();
+    errorSpy.mockRestore();
   });
 
   it('suppresses the unregistered-key warning with silent:true', () => {

@@ -6,7 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
  * jsdom unit tests can't provide — so these run against the demo in a real browser.
  *
  * The demo is served by the existing scripts/serve.js on port 5500; webServer starts it automatically
- * (reused locally if already running). Chromium only, to keep CI fast.
+ * (reused locally if already running). Run across Chromium, Firefox, and WebKit, since the behaviors
+ * under test are layout-engine dependent and most likely to differ between rendering engines.
  */
 export default defineConfig({
   testDir: './tests/e2e',
@@ -23,6 +24,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
     },
   ],
   webServer: {

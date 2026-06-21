@@ -75,7 +75,9 @@ export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end
       if (onPlaced) {
         onPlaced();
       }
-    });
+    // Swallow silently: this runs every animation frame, so logging would flood the console, and a
+    // stray rejection must not surface in the host app's unhandledrejection handler (e.g. Sentry).
+    }).catch(() => {});
   };
   // animationFrame: true syncs repositioning to the rAF loop. With the default (scroll/resize
   // events only), computePosition resolves asynchronously, so left/top is written the frame after
@@ -99,7 +101,8 @@ export function anchorPopup(reference, popupEl, placement = 'bottom-start') {
       middleware: [offset(8), flip({ padding: 8 }), shift({ padding: 8 })],
     }).then(({ x, y }) => {
       place(popupEl, x, y);
-    });
+    // Same rationale as anchorMarker: swallow per-frame rejections so they don't reach the host.
+    }).catch(() => {});
   };
   // animationFrame: true for the same smooth-tracking reason as anchorMarker. The reference here is
   // the marker element, which itself moves per frame, so the popup must track per frame to stay glued.

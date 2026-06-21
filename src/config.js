@@ -15,15 +15,17 @@
  * @typedef {Object<string, HelpEntry>} HelpConfig
  */
 
-function isPlainObject(value) {
+export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isValidPosition(position) {
+  // Number.isFinite rejects NaN / Infinity / non-numbers, so a computed coordinate that became NaN
+  // fails validation here instead of silently pinning the marker to 0,0 at render time.
   return (
     isPlainObject(position) &&
-    typeof position.top === 'number' &&
-    typeof position.left === 'number'
+    Number.isFinite(position.top) &&
+    Number.isFinite(position.left)
   );
 }
 
@@ -46,7 +48,7 @@ export function validateConfig(config) {
       throw new Error(`helpConfig["${key}"].text must be a non-empty string`);
     }
     if (entry.position !== undefined && !isValidPosition(entry.position)) {
-      throw new Error(`helpConfig["${key}"].position must be { top: number, left: number }`);
+      throw new Error(`helpConfig["${key}"].position must be { top: finite number, left: finite number }`);
     }
   }
 }

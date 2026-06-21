@@ -220,6 +220,45 @@ describe('createMutationWatcher', () => {
     watcher.disconnect();
   });
 
+  it('keeps processing the batch and stays observing when one onAdded throws', async() => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const seen = [];
+    // Throw on the first matching element; the rest of the batch must still be delivered.
+    const onAdded = jest.fn((el) => {
+      seen.push(el.getAttribute('data-help-id'));
+      if (el.getAttribute('data-help-id') === 'a') {
+        throw new Error('mount bug');
+      }
+    });
+    const watcher = createMutationWatcher({
+      root: document.body,
+      selector: '[data-help-id]',
+      onAdded,
+      onRemoved: jest.fn(),
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <button data-help-id="a"></button>
+      <button data-help-id="b"></button>
+    `;
+    document.body.appendChild(wrapper);
+    await tick();
+
+    expect(seen.sort()).toEqual(['a', 'b']);
+    expect(errorSpy).toHaveBeenCalledWith('[help-layer] observer onAdded threw:', expect.any(Error));
+
+    // Observation must still be alive after the throw.
+    const later = document.createElement('button');
+    later.setAttribute('data-help-id', 'c');
+    document.body.appendChild(later);
+    await tick();
+    expect(seen).toContain('c');
+
+    watcher.disconnect();
+    errorSpy.mockRestore();
+  });
+
   it('does not notify after disconnect', async() => {
     const onAdded = jest.fn();
     const watcher = createMutationWatcher({

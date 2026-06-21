@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%230f6bff'/><text x='16' y='23' font-size='22' text-anchor='middle' font-family='sans-serif' fill='white'>?</text></svg>">
 <title>HelpLayer Demo</title>
 <link rel="stylesheet" href="demo.css">
 <!--
@@ -25,16 +27,20 @@
 
 <main class="demo-app">
   <nav class="demo-nav" aria-label="Switch demo">
-    <a href="/demo/" aria-current="page">Vanilla</a>
-    <a href="/demo/react.html">React</a>
-    <a href="/demo/vue.html">Vue</a>
+    <a href="./" aria-current="page">Vanilla</a>
+    <a href="./react.html">React</a>
+    <a href="./vue.html">Vue</a>
     <div id="demo-lang-slot" class="demo-lang-slot"></div>
   </nav>
 
   <h1 data-i18n="appTitle">Admin screen sample</h1>
+  <p class="demo-hero">
+    <span class="demo-hero__tagline" id="demo-hero-tagline"></span>
+    <span class="demo-hero__hint" id="demo-hero-hint"></span>
+  </p>
 
-  <section class="demo-card">
-    <h2 data-i18n="formTitle">Basic form</h2>
+  <section class="demo-card" data-snippet="form">
+    <h2 data-i18n="formTitle">Explain form fields in place</h2>
     <div class="demo-field">
       <label for="username-input" data-i18n="usernameLabel">Username</label>
       <input type="text" id="username-input" data-help-id="username" value="Jane Doe">
@@ -42,8 +48,8 @@
     <button type="button" data-help-id="save" class="demo-btn demo-btn--primary" data-i18n="saveBtn">Save</button>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="scrollTitle">Inner scroll container</h2>
+  <section class="demo-card" data-snippet="scroll">
+    <h2 data-i18n="scrollTitle">Markers follow inside scroll areas</h2>
     <div class="demo-scroll">
       <p data-i18n="scrollTop">Dummy content at the top. Scroll down and the button appears.</p>
       <div class="demo-spacer"></div>
@@ -53,22 +59,22 @@
     </div>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="dynamicTitle">Dynamic elements (SPA-style)</h2>
+  <section class="demo-card" data-snippet="dynamic">
+    <h2 data-i18n="dynamicTitle">Works with dynamic SPA elements</h2>
     <p data-i18n="dynamicDesc">Markers follow even when rows are added/removed while help mode is ON.</p>
     <button type="button" id="demo-add" class="demo-btn" data-i18n="addRow">Add row</button>
     <button type="button" id="demo-remove" class="demo-btn" data-i18n="removeRow">Remove row</button>
     <ul id="demo-dynamic-list" class="demo-list"></ul>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="modalShadowTitle">Modal / Shadow DOM</h2>
+  <section class="demo-card" data-snippet="modalShadow">
+    <h2 data-i18n="modalShadowTitle">Reaches modals &amp; Shadow DOM</h2>
     <button type="button" id="demo-open-modal" class="demo-btn" data-i18n="openModal">Open modal</button>
     <div id="shadow-host"></div>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="inlineRichTitle">Inline definition / rich body</h2>
+  <section class="demo-card" data-snippet="inlineRich">
+    <h2 data-i18n="inlineRichTitle">Author help inline or with rich content</h2>
     <p data-i18n="inlineRichDesc">The left button has no config entry — its description comes from data attributes only. The middle shows line breaks in the body; the right uses custom rendering via render.</p>
     <button type="button"
       id="demo-inline-btn"
@@ -79,8 +85,8 @@
     <button type="button" data-help-id="richlink" class="demo-btn" data-i18n="richlinkBtn">render (link)</button>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="blockingTitle">Verifying interaction blocking</h2>
+  <section class="demo-card" data-snippet="blocking">
+    <h2 data-i18n="blockingTitle">Focus on reading — no accidental clicks</h2>
     <p data-i18n="blockingDesc">With help mode OFF the counter increments. While ON you can verify that interactions don't reach the host app.</p>
     <div class="demo-grid">
       <div>
@@ -95,8 +101,8 @@
     </div>
   </section>
 
-  <section class="demo-card">
-    <h2 data-i18n="apiTitle">Public API / callbacks</h2>
+  <section class="demo-card" data-snippet="api">
+    <h2 data-i18n="apiTitle">Drive it from your app via the API</h2>
     <p data-i18n="apiDesc">Try open / close / update from the API and watch each callback fire.</p>
     <div class="demo-toolbar">
       <button type="button" id="demo-api-open" class="demo-btn">open("apitarget")</button>
@@ -111,7 +117,10 @@
     </div>
   </section>
 
-  <div class="demo-spacer-tall"></div>
+  <section class="demo-card" data-snippet="customize">
+    <h2 data-i18n="customizeTitle">Make it match your UI</h2>
+    <p data-i18n="customizeDesc">Tune behavior with options, and restyle entirely with CSS custom properties (dark mode is built in). Nothing here requires changing your app code.</p>
+  </section>
 </main>
 
 <!-- A bar pinned to the bottom of the screen (position: fixed) -->

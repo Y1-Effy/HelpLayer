@@ -32,11 +32,13 @@
     "lint:fix": "eslint src tests --fix",
     "typecheck": "tsc -p jsconfig.json",
     "check": "npm run lint && npm run typecheck && npm test",
+    "build:site": "node demo/build-site.js",
+    "build:demos": "node demo/build-framework-demos.js",
     "build:bundle": "node scripts/build.js",
     "build:types": "tsc -p jsconfig.json --declaration --emitDeclarationOnly --noEmit false --rootDir src --outDir dist/types",
     "build": "npm run build:bundle && npm run build:types",
     "prepublishOnly": "npm run build",
-    "demo": "node scripts/serve.js"
+    "demo": "npm run build:demos && node scripts/serve.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",

@@ -129,3 +129,77 @@ test('a marker stays anchored to its target while scrolling', async({ page }) =>
   expect(Math.abs(after.dx - before.dx)).toBeLessThan(3);
   expect(Math.abs(after.dy - before.dy)).toBeLessThan(3);
 });
+
+test('a marker on a position:fixed target uses the fixed strategy (no scroll jitter)', async({ page }) => {
+  // A marker anchored to a fixed element must itself be position:fixed; otherwise it scrolls with the
+  // document and visibly jitters while the fixed target stays put. A normal target keeps using absolute.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  const positions = await page.evaluate(() => {
+    const nearestMarkerPosition = (sel) => {
+      const t = document.querySelector(sel).getBoundingClientRect();
+      const corner = { x: t.right, y: t.top };
+      let best = null;
+      for (const m of document.querySelectorAll('.help-layer-marker')) {
+        const r = m.getBoundingClientRect();
+        const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        const d = Math.hypot(c.x - corner.x, c.y - corner.y);
+        if (!best || d < best.d) {
+          best = { d, el: m };
+        }
+      }
+      return best ? window.getComputedStyle(best.el).position : null;
+    };
+    return {
+      fixed: nearestMarkerPosition('.demo-fixedbar .demo-btn'),
+      normal: nearestMarkerPosition('[data-help-id="save"]'),
+    };
+  });
+
+  expect(positions.fixed).toBe('fixed');
+  expect(positions.normal).toBe('absolute');
+});
+
+test('each card can reveal its implementation code', async({ page }) => {
+  // The first card's <details> starts closed and opens to show a non-empty code snippet.
+  const details = page.locator('.demo-card[data-snippet] details.demo-code').first();
+  await expect(details).toHaveJSProperty('open', false);
+  await details.locator('summary').click();
+  await expect(details).toHaveJSProperty('open', true);
+  const code = await details.locator('pre code').innerText();
+  expect(code.length).toBeGreaterThan(20);
+});
+
+test('the footer gives an adoption path (install command + outbound links)', async({ page }) => {
+  const footer = page.locator('footer.demo-footer');
+  await expect(footer).toBeVisible();
+  await expect(footer).toContainText('npm install help-layer');
+  expect(await footer.locator('a[href*="github.com"]').count()).toBeGreaterThan(0);
+  expect(await footer.locator('a[href*="npmjs.com/package/help-layer"]').count()).toBe(1);
+});
+
+test('the Customize card documents options and theme CSS variables', async({ page }) => {
+  const blocks = page.locator('.demo-card[data-snippet="customize"] details.demo-code');
+  await expect(blocks).toHaveCount(2); // options (JS) + theme (CSS)
+  // The theme block (2nd) lists the CSS custom properties.
+  await blocks.nth(1).locator('summary').click();
+  await expect(blocks.nth(1).locator('pre code')).toContainText('--help-layer-marker-bg');
+});
+
+test('the HelpLayer DOM footprint returns to zero after disabling (teardown proof)', async({ page }) => {
+  const footprint = () => page.evaluate(() =>
+    document.querySelectorAll(
+      '.help-layer-marker, .help-layer-popup, .help-layer-blocking-layer, style[data-help-layer-style]',
+    ).length);
+
+  expect(await footprint()).toBe(0);
+
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+  expect(await footprint()).toBeGreaterThan(0);
+
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER)).toHaveCount(0);
+  expect(await footprint()).toBe(0);
+});

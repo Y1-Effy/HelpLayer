@@ -2,6 +2,10 @@ import { initHelpLayer } from '../src/index.js';
 
 import { buildHelpConfig } from './helpConfig.js';
 import { createLangSwitcher, getLang, setLang, syncLangSwitcher } from './i18n.js';
+import { mountShowcase } from './showcase.js';
+import { showcaseStrings } from './showcase-i18n.js';
+import { createCodeBlock, copyText } from './code-snippet.js';
+import { mountSiteChrome } from './site-chrome.js';
 
 // UI strings for the demo page (English / Japanese). Keys used as text content are matched by the
 // `data-i18n` attribute in index.html; the rest are applied imperatively in applyLang().
@@ -9,32 +13,34 @@ const ui = {
   en: {
     docTitle: 'HelpLayer Demo',
     appTitle: 'Admin screen sample',
-    formTitle: 'Basic form',
+    formTitle: 'Explain form fields in place',
     usernameLabel: 'Username',
     usernameValue: 'Jane Doe',
     saveBtn: 'Save',
-    scrollTitle: 'Inner scroll container',
+    scrollTitle: 'Markers follow inside scroll areas',
     scrollTop: 'Dummy content at the top. Scroll down and the button appears.',
     scrollBtn: 'Button inside the scroll',
     scrollBottom: 'Dummy content at the bottom.',
-    dynamicTitle: 'Dynamic elements (SPA-style)',
+    dynamicTitle: 'Works with dynamic SPA elements',
     dynamicDesc: 'Markers follow even when rows are added/removed while help mode is ON.',
     addRow: 'Add row',
     removeRow: 'Remove row',
-    modalShadowTitle: 'Modal / Shadow DOM',
+    modalShadowTitle: 'Reaches modals & Shadow DOM',
     openModal: 'Open modal',
-    inlineRichTitle: 'Inline definition / rich body',
+    inlineRichTitle: 'Author help inline or with rich content',
     inlineRichDesc: 'The left button has no config entry — its description comes from data attributes only. The middle shows line breaks in the body; the right uses custom rendering via render.',
     inlineBtn: 'Inline definition',
     inlineTitle: 'Inline definition',
     inlineText: 'This description is written directly in the data-help-title / data-help-text attributes. No config object needed.',
     multilineBtn: 'Multi-line description',
     richlinkBtn: 'render (link)',
-    blockingTitle: 'Verifying interaction blocking',
+    blockingTitle: 'Focus on reading — no accidental clicks',
     blockingDesc: "With help mode OFF the counter increments. While ON you can verify that interactions don't reach the host app.",
     hostClickBtn: 'Host-side click',
     keyLabel: 'Key input',
-    apiTitle: 'Public API / callbacks',
+    apiTitle: 'Drive it from your app via the API',
+    customizeTitle: 'Make it match your UI',
+    customizeDesc: 'Tune behavior with options, and restyle entirely with CSS custom properties (dark mode is built in). Nothing here requires changing your app code.',
     apiDesc: 'Try open / close / update from the API and watch each callback fire.',
     apiSequence: 'API sequence',
     apiTargetBtn: 'API target button',
@@ -57,32 +63,34 @@ const ui = {
   ja: {
     docTitle: 'HelpLayer デモ',
     appTitle: '管理画面サンプル',
-    formTitle: '基本フォーム',
+    formTitle: 'フォーム項目をその場で説明',
     usernameLabel: 'ユーザー名',
     usernameValue: '山田太郎',
     saveBtn: '保存',
-    scrollTitle: '内側スクロールコンテナ',
+    scrollTitle: 'スクロール内でも説明が追従',
     scrollTop: '上部のダミー内容です。下にスクロールするとボタンが現れます。',
     scrollBtn: 'スクロール内のボタン',
     scrollBottom: '下部のダミー内容です。',
-    dynamicTitle: '動的要素（SPA想定）',
+    dynamicTitle: '動的に増減する要素にも対応',
     dynamicDesc: '解説モードON中に追加/削除してもマーカーが追従します。',
     addRow: '行を追加',
     removeRow: '行を削除',
-    modalShadowTitle: 'モーダル / Shadow DOM',
+    modalShadowTitle: 'モーダルや Shadow DOM の中まで',
     openModal: 'モーダルを開く',
-    inlineRichTitle: 'インライン定義 / リッチ本文',
+    inlineRichTitle: '説明はインラインでもリッチ本文でも',
     inlineRichDesc: '左のボタンは config に書かず data 属性だけで説明を付けています。中央は本文の改行、右は render での自前描画です。',
     inlineBtn: 'インライン定義',
     inlineTitle: 'インライン定義',
     inlineText: 'この説明は data-help-title / data-help-text 属性に直接書いています。config オブジェクト不要です。',
     multilineBtn: '複数行の説明',
     richlinkBtn: 'render（リンク）',
-    blockingTitle: 'イベント遮断の確認',
+    blockingTitle: '誤操作なしで説明に集中',
     blockingDesc: '解説モードOFFではカウンターが増えます。ON中はホストアプリ側の操作へ届かないことを確認できます。',
     hostClickBtn: 'ホスト側クリック',
     keyLabel: 'キー入力',
-    apiTitle: '公開API / コールバック',
+    apiTitle: 'アプリから API で制御',
+    customizeTitle: 'あなたの UI に合わせる',
+    customizeDesc: 'オプションで挙動を調整し、CSS カスタムプロパティで見た目を全面的に変更できます（ダークモード内蔵）。アプリ側のコード変更は不要です。',
     apiDesc: 'APIからの open / close / update と、各コールバックの発火を確認できます。',
     apiSequence: 'APIシーケンス',
     apiTargetBtn: 'API対象ボタン',
@@ -209,6 +217,14 @@ function currentHelpConfig() {
 // The callbacks update the toggle's state label (an example of the public onEnable/onDisable).
 const toggleBtn = document.getElementById('help-layer-toggle');
 const inlineBtn = document.getElementById('demo-inline-btn');
+
+// Demo-only "value layer": a first-run coach (turn ON -> click an "i") and a mode/marker status pill.
+// It's pure overlay chrome (pointer-events: none), so it never affects the library or the e2e suite.
+const showcase = mountShowcase({ toggleEl: toggleBtn, lang });
+
+// Shared footer: value chips, a11y note, copy-paste install, and links out (adoption path).
+const siteChrome = mountSiteChrome(lang);
+
 const help = initHelpLayer({
   config: currentHelpConfig(),
   toggle: toggleBtn,
@@ -229,14 +245,17 @@ const help = initHelpLayer({
   onEnable: () => {
     toggleBtn.setAttribute('aria-pressed', 'true');
     toggleBtn.textContent = t('toggleOn');
+    showcase.handleEnable();
     log('onEnable');
   },
   onDisable: () => {
     toggleBtn.setAttribute('aria-pressed', 'false');
     toggleBtn.textContent = t('toggle');
+    showcase.handleDisable();
     log('onDisable');
   },
   onOpen: (record) => {
+    showcase.handleOpen();
     log(`onOpen: ${record.key ?? 'inline'}`);
   },
   onClose: () => {
@@ -273,6 +292,111 @@ document.getElementById('demo-api-sequence').addEventListener('click', () => {
   }, 1900);
 });
 
+// --- "Show the code" blocks: reveal the minimal code behind each card (with copy) ---
+// Snippets are concise, accurate, language-neutral examples (only the summary/copy labels are i18n'd).
+const SNIPPETS = {
+  form: `<button data-help-id="save">Save</button>
+<button id="help-toggle">Help mode</button>
+
+initHelpLayer({
+  toggle: '#help-toggle',
+  config: {
+    save: { title: 'Save', text: 'Saves your input.' },
+  },
+});`,
+  scroll: `<div style="overflow:auto; height:160px">
+  <button data-help-id="inneritem">Button</button>
+</div>
+
+// Markers follow their target inside scroll containers
+// automatically — no extra code.`,
+  dynamic: `// Add elements anytime while help mode is ON:
+const li = document.createElement('li');
+li.innerHTML = '<button data-help-id="dynamic">Row</button>';
+list.appendChild(li);
+// A MutationObserver mounts the marker automatically.`,
+  modalShadow: `// Elements inside modals and OPEN Shadow DOM get markers too.
+host.attachShadow({ mode: 'open' }).innerHTML =
+  '<button data-help-id="shadowbtn">In shadow</button>';
+
+config: { shadowbtn: { title: '...', text: '...' } }`,
+  inlineRich: `<!-- No config entry needed: define help inline -->
+<button data-help-title="Save"
+        data-help-text="Saves your input.">Save</button>
+
+<!-- Rich body via render() -->
+initHelpLayer({
+  config,
+  render(record) {
+    if (record.key !== 'richlink') return null;
+    const a = document.createElement('a');
+    a.href = '/docs'; a.textContent = 'Learn more';
+    return a;
+  },
+});`,
+  blocking: `<button data-help-id="hostevent">Host click</button>
+
+// While help mode is ON, a transparent layer absorbs
+// clicks/keys so they never reach your app. It's automatic —
+// nothing to wire, and your existing listeners stay attached.`,
+  api: `const help = initHelpLayer({ toggle: '#help-toggle', config });
+
+help.open('apitarget');  // open a description programmatically
+help.close();            // close it
+help.update(newConfig);  // swap content (live-rebuilds if ON)
+help.destroy();          // detach + full teardown`,
+  // The Customize card shows two separately-copyable blocks: options (JS) and theme (CSS).
+  customizeJs: `// Options
+initHelpLayer({
+  toggle: '#help-toggle',
+  config,
+  markerLabel: 'i',           // character on the marker (default '?')
+  markerPlacement: 'top-end', // which corner to overlap
+  popupPlacement: 'bottom-start',
+  attribute: 'data-help-id',  // change the target attribute name
+  silent: true,               // suppress warnings for unregistered keys
+  nonce: pageNonce,           // allow the injected <style> under a strict CSP
+  render(record) { /* return your own DOM for the body */ },
+});`,
+  customizeCss: `/* Theme via CSS custom properties (dark mode is built in) */
+:root {
+  --help-layer-marker-bg: #0f6bff;
+  --help-layer-marker-color: #fff;
+  --help-layer-popup-bg: #fff;
+  --help-layer-popup-color: #1f2933;
+  --help-layer-accent: #1d4ed8;
+  --help-layer-overlay-bg: rgba(0,0,0,.12); /* scrim while ON */
+  --help-layer-overlay-cursor: not-allowed;
+}`,
+};
+
+const codeBlocks = [];
+function addCodeBlock(card, code) {
+  const { details, summary, copyBtn } = createCodeBlock(code);
+  copyBtn.addEventListener('click', async() => {
+    const ok = await copyText(code);
+    copyBtn.textContent = ok ? showcaseStrings(lang).copied : showcaseStrings(lang).copy;
+    setTimeout(() => {
+      copyBtn.textContent = showcaseStrings(lang).copy;
+    }, 1200);
+  });
+  card.appendChild(details);
+  codeBlocks.push({ summary, copyBtn });
+}
+document.querySelectorAll('[data-snippet]').forEach((card) => {
+  const key = card.dataset.snippet;
+  // The Customize card documents two things, shown as two separately-copyable blocks.
+  if (key === 'customize') {
+    addCodeBlock(card, SNIPPETS.customizeJs);
+    addCodeBlock(card, SNIPPETS.customizeCss);
+    return;
+  }
+  const code = SNIPPETS[key];
+  if (code) {
+    addCodeBlock(card, code);
+  }
+});
+
 // --- Apply the current language to all demo text, then rebuild the help config in that language ---
 function applyLang() {
   document.documentElement.lang = lang;
@@ -287,7 +411,9 @@ function applyLang() {
 
   // Inputs (value attribute), inline help attributes, and Shadow DOM text aren't data-i18n.
   document.getElementById('username-input').value = t('usernameValue');
-  document.getElementById('modal-field').value = t('modalValue');
+  // The modal is detached from the DOM while closed, so reach its field via the retained `modal`
+  // reference (getElementById wouldn't find it) — this works whether the modal is open or not.
+  modal.querySelector('#modal-field').value = t('modalValue');
   inlineBtn.setAttribute('data-help-title', t('inlineTitle'));
   inlineBtn.setAttribute('data-help-text', t('inlineText'));
   shadowText.textContent = t('shadowP');
@@ -300,6 +426,19 @@ function applyLang() {
 
   // Toggle label depends on the current ON/OFF state.
   toggleBtn.textContent = help.isActive() ? t('toggleOn') : t('toggle');
+
+  // Demo hero copy + showcase chrome follow the language too.
+  const sc = showcaseStrings(lang);
+  document.getElementById('demo-hero-tagline').textContent = sc.heroTagline;
+  document.getElementById('demo-hero-hint').textContent = sc.heroHint;
+  showcase.setLang(lang);
+  siteChrome.setLang(lang);
+
+  // "Show the code" summary/copy labels follow the language too.
+  codeBlocks.forEach(({ summary, copyBtn }) => {
+    summary.textContent = sc.showCode;
+    copyBtn.textContent = sc.copy;
+  });
 
   // Rebuild the config in the new language (a no-op rebuild when OFF; live rebuild when ON).
   help.update(currentHelpConfig());

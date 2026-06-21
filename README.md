@@ -6,13 +6,91 @@
 
 **English** | [日本語](./README.ja.md)
 
+🔗 **Live demo: <https://y1-effy.github.io/HelpLayer/>** (Vanilla / React / Vue — turn on "Help mode" top-right, then click an "i")
+
+![HelpLayer demo: turning Help mode ON makes a marker (here "i", "?" by default) appear next to each target element; clicking it opens a description popup. Turning it OFF removes all the DOM it added.](./assets/demo.en.gif)
+
 A **framework-agnostic "help mode" library you can drop into any existing web app**.
-While the mode is ON, it shows a "?" marker next to each target element; clicking it opens a description popup.
+While the mode is ON, it shows a "?" marker next to each target element; clicking it opens a description popup. The normal appearance is completely unchanged.
 It never touches the host app's own event listeners — a transparent blocking layer absorbs interaction instead — so you can adopt it without rewriting existing code.
 
-- Only one dependency, [`@floating-ui/dom`](https://floating-ui.com/); lightweight (the prebuilt IIFE is ~30KB minified, with `@floating-ui/dom` bundled in)
-- Pierces Shadow DOM, follows SPA dynamic elements, avoids marker-to-marker overlap, and auto-adjusts the popup at screen edges
+- Only one dependency, [`@floating-ui/dom`](https://floating-ui.com/); lightweight (the prebuilt IIFE is ~33KB minified, with `@floating-ui/dom` bundled in)
+- Pierces Shadow DOM, keeps up with dynamically added/removed elements in SPAs, avoids marker-to-marker overlap, and auto-adjusts the popup at screen edges
+- Mindful of keyboard use and screen readers (the popup is `role="dialog"`; opening moves focus and closing returns it to the marker; while the mode is on, focus is trapped within the UI, and `Esc` closes it)
 - Fully cleans up the DOM, listeners, and styles it added when you turn it OFF
+- Works in modern browsers (Chromium / Firefox / WebKit; e2e is verified across all three engines)
+
+## Table of contents
+
+- [Why HelpLayer (vs. existing options)](#why-helplayer-vs-existing-options)
+- [When it fits (where adoption pays off)](#when-it-fits-where-adoption-pays-off)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Free placement (descriptions not bound to an element)](#free-placement-descriptions-not-bound-to-an-element)
+- [API](#api)
+- [Theming (CSS custom properties)](#theming-css-custom-properties)
+- [Known limitations](#known-limitations)
+- [Security](#security)
+- [Development](#development)
+
+## Why HelpLayer (vs. existing options)
+
+There are many ways to add explanations to a screen, but each comes with its own assumptions. HelpLayer
+commits fully to **"a help mode where users freely pick just the spots they want to understand and check
+them on the spot,"** aiming to sacrifice neither the normal look nor your existing code.
+
+- **vs. product tours (step-by-step guidance)** … Rather than marching users along a fixed route,
+  it's **exploratory**: users pick the element they want and open it right there. The timing and order of
+  reading are left entirely to the user.
+- **vs. always-on tooltips** … It never clutters the UI by showing explanations all the time. Markers
+  appear **only while the mode is ON**, so **the normal design is completely unchanged**.
+- **vs. DAP SaaS (Digital Adoption Platform)** … No external platform, contract, or tracking required —
+  **zero running cost, one dependency, ~33KB, fully local**. It also supports CSP / Trusted Types, so it
+  fits environments with strict constraints on what you can bring in.
+
+On top of that, they all share a common core: you can **drop it in without rewriting existing code**, it's
+**framework-agnostic**, it never touches the host app's own events (a transparent blocking layer absorbs
+interaction), and it **fully cleans up on ON→OFF**.
+
+| | Product tours | Always-on tooltips | DAP SaaS | **HelpLayer** |
+|---|---|---|---|---|
+| Presentation | tends to be linear steps | tends to be always visible | service-dependent | **only while ON · explore any spot** |
+| Normal UI | depends on implementation | tends to get cluttered | depends on implementation | **left entirely unchanged** |
+| Adoption | usually needs integration | add CSS/JS | snippet + external platform + contract | **drop-in · no existing-code changes** |
+| Cost / ops | depends on implementation | local | monthly fee + tracking ops | **zero running cost · one dependency** |
+
+> Note: HelpLayer is **not a full replacement for a DAP**. Advanced features like analytics, segmented
+> delivery, complex flow guidance, and onboarding automation are out of scope — it commits to
+> **satisfying just the core "show explanations in-screen" function at minimal cost**. Conversely, if your
+> main goal is to drive strong funnels or measure usage, a DAP or a tour is the better fit.
+
+## When it fits (where adoption pays off)
+
+- **A DAP / guide SaaS isn't worth the cost and you're considering canceling — but canceling drops your
+  in-screen help back to zero.**
+  → Keep just the core "show explanations in-screen" function in-house, with one dependency and zero
+  running cost. It gives you a place to land after switching away.
+- **You don't have the budget to contract a SaaS, but you want to expand your help.**
+  → Drop it in with npm or a single `<script>`. No monthly fee, no account.
+- **Maintaining a separate manual in an office suite is a chore — and nobody reads it even when you do.**
+  → Co-locate the explanation with the very element on screen (`data-help-title` / `data-help-text` or a
+  small config). You're freed from maintaining a separate doc, and the UI and its explanation never drift apart.
+- **You want onboarding, but a forced tour feels pushy** and you'd rather avoid it.
+  → It's exploratory — users pick what they want and open it on the spot — so it never interrupts their work.
+- **Environments where you can't bring in an external SaaS** (strict CSP, privacy requirements, closed
+  networks, no tracking allowed).
+  → It meets those requirements with fully local operation and no external communication.
+- **Regardless of framework (React / Vue, etc.)**, you want to adopt it without touching your rendering library.
+  → Framework-agnostic and drop-in; it doesn't rewrite your existing code.
+
+> Business systems and admin screens are the easiest fit, but the use isn't limited to
+> them. On **ordinary websites** too, you can supplement "what to enter in this field" on signup, contact,
+> or reservation forms with a marker + popup. Any "existing web page you want to add explanations to" is in
+> scope, and it makes a lightweight alternative to maintaining a separate manual.
+
+> 💡 **It works for desktop apps, too.** Electron / Tauri and the like render their app screens with a
+> WebView (HTML/DOM), so you can drop HelpLayer in exactly as you would in a web app. It's a surprisingly
+> natural option when you want to add a "help mode" to a native-feeling screen.
 
 ## Installation
 
@@ -20,7 +98,9 @@ It never touches the host app's own event listeners — a transparent blocking l
 npm install help-layer
 ```
 
-If you'd rather drop it in with a single `<script>` and no bundler, load the prebuilt IIFE and a global `HelpLayer` is exposed (see below).
+If you'd rather drop it in with a single `<script>` and no bundler, load the prebuilt IIFE, which exposes a global `HelpLayer` (see below).
+
+TypeScript type definitions are bundled (`package.json`'s `types` points to `dist/types`), so type completion works with no extra setup in TS projects.
 
 ## Quick start
 
@@ -44,7 +124,7 @@ initHelpLayer({
 });
 ```
 
-### 2. Write it inline in your markup (no config needed)
+### 2. Write it inline in your markup (no per-entry config needed; `config: {}` still required)
 
 If you'd rather keep descriptions next to your markup, just add `data-help-title` / `data-help-text` to an element and it becomes a target.
 This can be combined with `config`, and **if the same key exists in `config`, the config wins**.
@@ -63,7 +143,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 
 ```html
 <script
-  src="https://unpkg.com/help-layer@1.0.0/dist/help-layer.iife.js"
+  src="https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js"
   integrity="sha384-……(replace with the published file's hash)"
   crossorigin="anonymous"></script>
 <script>
@@ -75,7 +155,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 ```
 
 > Generate the `integrity` hash from the actually published file, e.g.:
-> `curl -s https://unpkg.com/help-layer@1.0.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> `curl -s https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
 > (If you don't pin the version, the SRI will mismatch and the browser will refuse to load it.)
 
 ## Free placement (descriptions not bound to an element)
@@ -180,7 +260,7 @@ You can change the look just by overriding the following variables in your host 
 
 - By design, `title` / `text` are rendered with `textContent` only; `innerHTML` / `eval` / `new Function` are **never used**.
 - There is **no external communication** (`fetch`, etc.) and **no storage use** (`localStorage` / `cookie`) — it runs fully locally.
-- The only path through which untrusted data could reach the DOM is the `render` option. Its return value is not sanitized, so
+- The only path through which untrusted data is inserted into the DOM as HTML / DOM nodes is the `render` option. Its return value is not sanitized, so
   neutralize it on the caller side if it contains user input (see "Line breaks & links in the body" above).
 - The only runtime dependency is `@floating-ui/dom`. When using a CDN, pin the version and add SRI as noted above.
 

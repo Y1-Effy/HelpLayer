@@ -3,6 +3,7 @@
  * Starts each subsystem (style injection, marker manager, popup, blocking layer, DOM observation)
  * and aggregates their teardown into the cleanup registry (state).
  */
+import { isolateBackgroundFromAT } from './aria-isolation.js';
 import { activateBlockingLayer } from './blocking-layer.js';
 import { isPlainObject, normalizeConfig, validateConfig } from './config.js';
 import { createMarkerManager } from './markers.js';
@@ -120,6 +121,14 @@ export function createToggleController(options) {
       },
       // When overlap avoidance moves a marker, make the open popup follow.
       onOverlapResolved: () => popup.reposition(),
+      // If a target is hidden (e.g. display:none) while its popup is open, close it (its marker just
+      // collapsed to 0x0) — same as the SPA-removal path. Return focus to the toggle since the marker
+      // is no longer focusable.
+      onMarkerHidden: (record) => {
+        if (popup.isOpen(record.id)) {
+          popup.close(toggleEl ?? undefined);
+        }
+      },
     });
 
     // Initial mount (free placements + elements currently in the DOM, including Shadow DOM)
@@ -151,7 +160,7 @@ export function createToggleController(options) {
         popup.root.contains(target) ||
         (typeof target.closest === 'function' && !!target.closest('.help-layer-marker')));
 
-    activateBlockingLayer(state, {
+    const layer = activateBlockingLayer(state, {
       toggleEl,
       onBackgroundClick: () => popup.close(),
       isLibraryElement,
@@ -163,6 +172,15 @@ export function createToggleController(options) {
         }
       },
     });
+
+    // Semantic blocking for assistive tech: remove the host from the a11y tree while ON (the layer/
+    // popup/markers and the toggle stay reachable). Runs last so the just-mounted library nodes are
+    // present and skipped by the initial scan.
+    const isLibraryNode = (el) =>
+      el === layer ||
+      el === popup.root ||
+      (!!el.classList && el.classList.contains('help-layer-marker'));
+    isolateBackgroundFromAT(state, { toggleEl, isLibraryNode });
   }
 
   function turnOff() {

@@ -78,6 +78,24 @@ describe('createMarkerManager', () => {
     expect(document.querySelector('.help-layer-marker').textContent).toBe('?');
   });
 
+  it('calls onMarkerHidden with the record when the target transitions to hidden', () => {
+    // anchorMarker's 5th arg is the onHidden callback; fire it synchronously to simulate the
+    // visible -> hidden transition.
+    anchorMarker.mockImplementationOnce((ref, el, onPlaced, placement, onHidden) => {
+      if (onHidden) {
+        onHidden();
+      }
+      return jest.fn();
+    });
+    const onMarkerHidden = jest.fn();
+    const state = createState();
+    const manager = createMarkerManager(state, { onMarkerClick: jest.fn(), onMarkerHidden });
+    const record = elementRecord('a');
+    manager.mount(record);
+
+    expect(onMarkerHidden).toHaveBeenCalledWith(record);
+  });
+
   it('calls onMarkerClick with the record and marker element on click', () => {
     const onMarkerClick = jest.fn();
     const state = createState();
@@ -148,6 +166,55 @@ describe('createMarkerManager', () => {
     expect(rectSpy).toHaveBeenCalled();
     const markerEls = [...document.querySelectorAll('.help-layer-marker')];
     expect(markerEls.some((el) => el.style.transform !== '')).toBe(true);
+    rectSpy.mockRestore();
+  });
+
+  it('reads each marker rect exactly once per pass (no O(n^2) reflow at scale)', () => {
+    anchorMarker.mockImplementation((ref, el, onPlaced) => {
+      if (onPlaced) {
+        onPlaced();
+      }
+      return jest.fn();
+    });
+
+    const state = createState();
+    const manager = createMarkerManager(state, { onMarkerClick: jest.fn() });
+    const n = 30;
+    for (let i = 0; i < n; i++) {
+      manager.mount(elementRecord(`m${i}`));
+    }
+
+    // Spy only around the pass so the count reflects the overlap pass alone (mounting reads no rects).
+    const rectSpy = jest.spyOn(Element.prototype, 'getBoundingClientRect');
+    rafCallbacks.forEach(([, cb]) => cb());
+
+    // One measurement per marker, not per pair: guards against re-introducing O(n^2) forced reflow.
+    expect(rectSpy.mock.calls).toHaveLength(n);
+    rectSpy.mockRestore();
+  });
+
+  it('excludes a hidden marker from overlap avoidance', () => {
+    anchorMarker.mockImplementation((ref, el, onPlaced) => {
+      if (onPlaced) {
+        onPlaced();
+      }
+      return jest.fn();
+    });
+
+    const state = createState();
+    const manager = createMarkerManager(state, { onMarkerClick: jest.fn() });
+    manager.mount(elementRecord('a'));
+    manager.mount(elementRecord('b'));
+
+    // Simulate floating.js hiding one marker because its target went display:none. With only one
+    // visible marker left, the pass must early-skip without measuring any rect (forcing a reflow).
+    const markerEls = [...document.querySelectorAll('.help-layer-marker')];
+    markerEls[0].style.display = 'none';
+
+    const rectSpy = jest.spyOn(Element.prototype, 'getBoundingClientRect');
+    rafCallbacks.forEach(([, cb]) => cb());
+
+    expect(rectSpy).not.toHaveBeenCalled();
     rectSpy.mockRestore();
   });
 

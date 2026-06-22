@@ -221,4 +221,26 @@ describe('createPopupController', () => {
 
     errorSpy.mockRestore();
   });
+
+  it('gives each popup a unique title id so two instances on one page do not collide', () => {
+    const state = createState();
+    const first = createPopupController(state);
+    const second = createPopupController(state);
+
+    const firstTitle = first.root.querySelector('.help-layer-popup__title');
+    const secondTitle = second.root.querySelector('.help-layer-popup__title');
+
+    // Distinct ids: a duplicate id would be invalid HTML and make aria-labelledby ambiguous.
+    expect(firstTitle.id).not.toBe(secondTitle.id);
+    // Each popup's aria-labelledby must point at its own title element.
+    expect(first.root.getAttribute('aria-labelledby')).toBe(firstTitle.id);
+    expect(second.root.getAttribute('aria-labelledby')).toBe(secondTitle.id);
+  });
+
+  it('marks the dialog as a modal (aria-modal) for assistive tech', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    expect(popup.root.getAttribute('role')).toBe('dialog');
+    expect(popup.root.getAttribute('aria-modal')).toBe('true');
+  });
 });

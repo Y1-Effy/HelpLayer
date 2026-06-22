@@ -71,6 +71,27 @@ export function isFixedReference(reference) {
   return false;
 }
 
+/**
+ * Whether a reference element is currently not rendered (hidden). Free placements use a virtual
+ * element with no host node, so they are never "hidden" (return false).
+ * @param {Element|object} reference
+ */
+export function isReferenceHidden(reference) {
+  if (!(reference instanceof Element)) {
+    return false;
+  }
+  // checkVisibility() catches display:none (incl. an ancestor), content-visibility, and—with the
+  // option—visibility:hidden, in one cheap call without any extra observers. NOTE: do NOT use
+  // offsetParent here; it is null for position:fixed elements too (which this lib supports as
+  // targets) and would wrongly hide their markers. Engines without checkVisibility fall back to the
+  // rect: a display:none element measures 0x0 (the worst case — the marker would jump to 0,0).
+  if (typeof reference.checkVisibility === 'function') {
+    return !reference.checkVisibility({ visibilityProperty: true, contentVisibilityAuto: true });
+  }
+  const r = reference.getBoundingClientRect();
+  return r.width === 0 && r.height === 0;
+}
+
 // Half of the default marker size (22px). The amount used to overlap the marker onto the
 // target's corner with an "inset". (If the marker-size CSS variable is changed, the resulting
 // drift is left as existing behavior = not compensated for here.)
@@ -94,9 +115,11 @@ function markerOffset(placement) {
  * @param {HTMLElement} markerEl
  * @param {() => void} [onPlaced] called every time placement is finalized (used to trigger the overlap-avoidance pass, etc.)
  * @param {import('@floating-ui/dom').Placement} [placement] corner to overlap (top-end/top-start/bottom-end/bottom-start). Default 'top-end'
+ * @param {() => void} [onHidden] called once each time the target transitions from visible to hidden
+ *   (lets the caller close a popup that was open on this now-hidden marker)
  * @returns {() => void} cleanup
  */
-export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end') {
+export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end', onHidden) {
   // Match the floating element's strategy to the reference: a fixed reference needs a fixed marker, or
   // it jitters while scrolling (see isFixedReference). Inline !important beats the stylesheet's
   // `position: absolute !important`.
@@ -104,7 +127,27 @@ export function anchorMarker(reference, markerEl, onPlaced, placement = 'top-end
   if (strategy === 'fixed') {
     markerEl.style.setProperty('position', 'fixed', 'important');
   }
+  // Track the visible/hidden state so onHidden fires only on the transition, not every frame.
+  let hiddenNow = false;
   const update = () => {
+    if (isReferenceHidden(reference)) {
+      // Target went hidden (e.g. display:none) while ON. Hide the marker too instead of leaving it
+      // stranded (a display:none target measures 0x0, which would otherwise fling the marker to 0,0).
+      // Inline !important beats the stylesheet's `display:block !important`; skip computePosition while
+      // hidden. autoUpdate({animationFrame:true}) keeps polling, so the marker is restored on reshow.
+      markerEl.style.setProperty('display', 'none', 'important');
+      if (!hiddenNow && onHidden) {
+        onHidden(); // notify on the visible -> hidden edge (e.g. close a popup open on this marker)
+      }
+      hiddenNow = true;
+      if (onPlaced) {
+        onPlaced(); // let the overlap pass re-pack without this now-hidden marker
+      }
+      return;
+    }
+    hiddenNow = false;
+    // Revert to the stylesheet's `display:block` (no-op when we never hid it).
+    markerEl.style.removeProperty('display');
     computePosition(reference, markerEl, {
       placement,
       strategy,

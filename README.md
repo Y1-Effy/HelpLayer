@@ -146,7 +146,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 
 ```html
 <script
-  src="https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js"
+  src="https://unpkg.com/help-layer@1.2.0/dist/help-layer.iife.js"
   integrity="sha384-……(replace with the published file's hash)"
   crossorigin="anonymous"></script>
 <script>
@@ -158,7 +158,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 ```
 
 > Generate the `integrity` hash from the actually published file, e.g.:
-> `curl -s https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> `curl -s https://unpkg.com/help-layer@1.2.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
 > (If you don't pin the version, the SRI will mismatch and the browser will refuse to load it.)
 
 ## Free placement (descriptions not bound to an element)

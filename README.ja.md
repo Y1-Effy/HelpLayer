@@ -3,6 +3,7 @@
 [![npm](https://img.shields.io/npm/v/help-layer.svg)](https://www.npmjs.com/package/help-layer)
 [![license](https://img.shields.io/npm/l/help-layer.svg)](./LICENSE)
 [![repo](https://img.shields.io/badge/GitHub-Y1--Effy%2FHelpLayer-181717?logo=github)](https://github.com/Y1-Effy/HelpLayer)
+[![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Y1-Effy/f1479376394b26b678f9e97095d88d95/raw/coverage.json)](https://github.com/Y1-Effy/HelpLayer/actions/workflows/ci.yml)
 
 [English](./README.md) | **日本語**
 
@@ -16,7 +17,7 @@
 
 - 依存は [`@floating-ui/dom`](https://floating-ui.com/) のみ・軽量（プリビルドの IIFE で約 33KB minified、`@floating-ui/dom` 同梱）
 - Shadow DOM 貫通・SPA の動的要素・マーカー同士の重なり回避・画面端でのポップアップ自動調整に対応
-- キーボード操作・スクリーンリーダーに配慮（ポップアップは `role="dialog"`、開くとフォーカスを移し閉じるとマーカーへ復帰。モード中はフォーカスを UI 内に封じ込め、`Esc` で閉じる）
+- キーボード操作・スクリーンリーダーに配慮（ポップアップは `role="dialog"`、開くとフォーカスを移し閉じるとマーカーへ復帰。モード中はフォーカスを UI 内に封じ込め、`Esc` で説明を閉じる（開いている説明が無ければ解説モード自体を終了））
 - ON→OFF で追加した DOM・イベント・スタイルを**完全後始末**
 - モダンブラウザ（Chromium / Firefox / WebKit）で動作（e2e を 3 エンジンで検証）
 
@@ -29,7 +30,9 @@
 - [自由配置（要素に紐づけない説明）](#自由配置要素に紐づけない説明)
 - [API](#api)
 - [テーマ（CSS カスタムプロパティ）](#テーマcss-カスタムプロパティ)
+- [対応環境（ブラウザ／ランタイム）](#対応環境ブラウザランタイム)
 - [既知の制約](#既知の制約)
+- [アクセシビリティ](#アクセシビリティ)
 - [セキュリティ](#セキュリティ)
 - [開発](#開発)
 
@@ -137,7 +140,7 @@ CDN から読む場合は、改ざん検知のため **バージョンを固定*
 
 ```html
 <script
-  src="https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js"
+  src="https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js"
   integrity="sha384-……（公開版のハッシュに差し替え）"
   crossorigin="anonymous"></script>
 <script>
@@ -149,7 +152,7 @@ CDN から読む場合は、改ざん検知のため **バージョンを固定*
 ```
 
 > `integrity` のハッシュは公開した実ファイルから生成します。例:
-> `curl -s https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> `curl -s https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
 > （バージョンを固定しないと SRI と不整合になり読み込みが拒否されます。）
 
 ## 自由配置（要素に紐づけない説明）
@@ -244,13 +247,69 @@ initHelpLayer({
 | `--help-layer-overlay-bg` | `transparent` | 遮断レイヤー（スクリム）背景色。`rgba(0,0,0,0.15)` 等で操作不能状態を可視化 |
 | `--help-layer-overlay-cursor` | `default` | 遮断領域上のカーソル。`not-allowed` / `help` 等 |
 
+## 対応環境（ブラウザ／ランタイム）
+
+HelpLayer は **現代的な evergreen ブラウザ**（Chrome / Edge・Firefox・Safari）と近年の Electron の
+Chromium を対象とします。**IE11 は非対応であり、構造上対応できません** — ES2020 構文・ES Modules・
+`ResizeObserver`・Shadow DOM・`clip-path` に依存しており、IE はいずれも備えていないためです。これは
+パッケージ形式の調整では埋められません。本当に古いランタイムを対象とする必要がある場合、本ライブラリは
+適合しません。
+
+下限を決める要素（新しい2つの API は縮退するため、実質的なハード下限はおよそ **2020 年代の evergreen**）:
+
+| 機能 | 用途 | 下限の目安 | フォールバック |
+|---|---|---|---|
+| ES2020＋ES Modules | ライブラリ全体 | evergreen（〜2020） | なし（古い対象はトランスパイル／バンドルが必要） |
+| `ResizeObserver`（`@floating-ui/dom` 経由） | マーカー／ポップアップの自動配置 | evergreen（〜2020） | なし |
+| open Shadow DOM 貫通 | shadow root 内の対象探索 | evergreen | closed は設計上非対応 |
+| `clip-path: polygon()` | 遮断レイヤーのトグル「穴」 | evergreen（極端に古い Safari は `-webkit-` 必要） | なし |
+| `inert` | ホストを a11y ツリーから除外 | Chrome102 / FF112 / Safari15.5（2023） | 視覚＋キーボード遮断のみに縮退 |
+| `Element.checkVisibility()` | 対象が隠れた時にマーカーも隠す | Chrome105 / FF125 / Safari17.4（2024） | 0×0 rect 判定に縮退（`display:none` のみ検出） |
+
+### モジュール形式
+
+- **ESM（既定）**: `import { initHelpLayer } from 'help-layer'` はビルド済み・テスト済みの
+  `dist/help-layer.esm.js` を解決します（`@floating-ui/dom` は external のままで、バンドラ／npm が解決）。
+- **バンドラ無し／`<script>`／CDN／厳格環境**: `@floating-ui/dom` を同梱しグローバル `HelpLayer` を公開する
+  自己完結の IIFE ビルドを使用 — [`<script>` だけで使う](#script-だけで使うバンドラなし) 参照。
+- **CommonJS（`require`）**: `require` 入口は提供しません。ブラウザ DOM 専用のため Node の CJS 文脈では
+  意味を持ちません。非 ESM のツールチェーンではバンドラ経由で ESM を取り込むか、上記 IIFE を読み込んでください。
+
 ## 既知の制約
 
 - closed な Shadow DOM は JS から到達できないため非対応（open のみ貫通）。
 - マーカーを隅へ重ねるオフセットは既定マーカーサイズ（22px）前提。`--help-layer-marker-size` を大きく変えると
   わずかにズレることがあります。
+- **対象要素の「状態」変化は監視しません**（監視するのは「レイアウト」と「DOM 上の有無」のみ）。ON 中、
+  マーカーは対象の位置・サイズ変化に追従し、DOM への追加／削除に応じて mount／unmount され、対象自体が
+  隠れる／現れる（`display:none` 等）とマーカーも隠れる／戻ります。一方で、対象の**属性・内容の変化**は
+  検知しません — 既存要素への `data-help-id` の後付け／除去、`data-help-title` `data-help-text` の書き換え、
+  `disabled` 等の状態切り替えはマーカーに反映されません。これは意図的な制約です。文書全体に属性監視
+  （`MutationObserver` の `attributes: true, subtree: true`）を張ると、あらゆるクラス／スタイル変更で発火し、
+  ドロップイン型ライブラリとしては性能上のアンチパターンになるためです。これらの状態を変えた場合は、
+  `update(config)` で作り直す、モードを OFF→ON する、または対象要素を一度 DOM から外して入れ直してください
+  （入れ直しは `childList` 監視に乗ります）。
+
+## アクセシビリティ
+
+モード ON 中は、ホストアプリを視覚・ポインタ／キーボードだけでなく **支援技術（AT）に対しても意味的に
+無効化**します。ホストを [`inert`](https://developer.mozilla.org/ja/docs/Web/HTML/Global_attributes/inert)
+属性で a11y ツリーから除外するため、スクリーンリーダーの仮想カーソル（ブラウズモード）でも背景の読み上げ・
+操作ができません。到達できるのはヘルプマーカー・ポップアップ・トグルのみです。ポップアップは
+`aria-modal="true"` を持つ `role="dialog"` で、開くとフォーカスが移り、閉じるとマーカーへ戻ります。
+
+この隔離の限定事項:
+
+- `inert` は inert なサブツリーの子孫で打ち消せないため、隔離は document body の直下レベルで適用します
+  （トグルを透過させる clip-path の"穴"と同じ考え方）。トグルは操作可能である必要があるので、
+  **トグルを含む body 直下ブランチは到達可能なまま残します** — 漏れを最小化するにはトグルを body 直下
+  （または近い位置）に置いてください（直下の `<body>` 子要素なら漏れゼロ）。
+- `inert` は現行ブラウザで広くサポートされます。非対応環境でも視覚／キーボードの遮断は有効で、AT 除外だけが
+  グレースフルに縮退します（エラーにはなりません）。
 
 ## セキュリティ
+
+脆弱性の報告方法・サポート方針・セキュリティリリース方針は [SECURITY.ja.md](./SECURITY.ja.md) を参照してください。報告は公開 issue ではなく GitHub の非公開脆弱性報告をご利用ください。
 
 - 設計上、`title` / `text` の描画は `textContent` のみで、`innerHTML` / `eval` / `new Function` は**一切使いません**。
 - 外部通信（`fetch` 等）・`localStorage` / `cookie` などのストレージ利用も**ありません**（完全ローカル動作）。

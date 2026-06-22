@@ -37,3 +37,49 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Measure coverage and surface it: a table in the job summary on every run, and (on main) a
+  # README badge updated via a Gist. Separate job so the `check` one-liner stays untouched.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+
+      # Render the totals from coverage-summary.json into the PR/run summary (no external service).
+      - name: Coverage summary
+        id: cov
+        run: |
+          node -e '
+            const t = require("./coverage/coverage-summary.json").total;
+            const row = (k) => `| ${k} | ${t[k].pct}% (${t[k].covered}/${t[k].total}) |`;
+            const md = [
+              "## Coverage",
+              "",
+              "| Metric | Coverage |",
+              "| --- | --- |",
+              row("statements"), row("branches"), row("functions"), row("lines"),
+              "",
+            ].join("\n");
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `lines=${t.lines.pct}\n`);
+          '
+
+      # Update the README badge only for main pushes. No-op-safe: skipped on PRs/forks.
+      - name: Update coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: coverage.json
+          label: coverage
+          message: ${{ steps.cov.outputs.lines }}%
+          valColorRange: ${{ steps.cov.outputs.lines }}
+          minColorRange: 50
+          maxColorRange: 95

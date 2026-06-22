@@ -73,7 +73,7 @@ jobs:
       # Update the README badge only for main pushes. No-op-safe: skipped on PRs/forks.
       - name: Update coverage badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: schneegans/dynamic-badges-action@v1.7.0
+        uses: schneegans/dynamic-badges-action@v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: ${{ vars.COVERAGE_GIST_ID }}

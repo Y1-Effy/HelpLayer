@@ -7,7 +7,7 @@
  * Only this pure helper is exercised here; the rest of floating.js calls Floating UI's autoUpdate /
  * computePosition, which need layout APIs jsdom lacks, so the DOM-layer tests mock floating.js whole.
  */
-import { isFixedReference } from '../src/floating.js';
+import { isFixedReference, isReferenceHidden } from '../src/floating.js';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -53,4 +53,43 @@ test('crosses the shadow boundary to find a fixed host', () => {
   const inner = document.createElement('button');
   root.appendChild(inner);
   expect(isFixedReference(inner)).toBe(true);
+});
+
+describe('isReferenceHidden', () => {
+  // jsdom does no layout, so checkVisibility/getBoundingClientRect can't reflect real CSS; drive the
+  // visibility signal explicitly to test the helper's branching.
+  test('reports hidden when checkVisibility() is false', () => {
+    const el = document.createElement('div');
+    el.checkVisibility = () => false;
+    document.body.appendChild(el);
+    expect(isReferenceHidden(el)).toBe(true);
+  });
+
+  test('reports visible when checkVisibility() is true', () => {
+    const el = document.createElement('div');
+    el.checkVisibility = () => true;
+    document.body.appendChild(el);
+    expect(isReferenceHidden(el)).toBe(false);
+  });
+
+  test('falls back to a 0x0 rect when checkVisibility is unavailable', () => {
+    const el = document.createElement('div');
+    // Simulate an engine without checkVisibility; a display:none element measures 0x0.
+    el.checkVisibility = undefined;
+    el.getBoundingClientRect = () => ({ width: 0, height: 0, top: 0, left: 0 });
+    expect(isReferenceHidden(el)).toBe(true);
+
+    el.getBoundingClientRect = () => ({ width: 10, height: 10, top: 0, left: 0 });
+    expect(isReferenceHidden(el)).toBe(false);
+  });
+
+  test('treats a virtual element (free placement) as never hidden', () => {
+    const virtual = { getBoundingClientRect: () => ({ top: 0, left: 0, width: 0, height: 0 }) };
+    expect(isReferenceHidden(virtual)).toBe(false);
+  });
+
+  test('returns false for null/undefined', () => {
+    expect(isReferenceHidden(null)).toBe(false);
+    expect(isReferenceHidden(undefined)).toBe(false);
+  });
 });

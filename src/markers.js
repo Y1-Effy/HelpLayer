@@ -34,12 +34,15 @@ function referenceFor(record) {
  * @param {object} options
  * @param {(record: import('./matcher.js').HelpRecord, markerEl: HTMLElement) => void} options.onMarkerClick
  * @param {() => void} [options.onOverlapResolved]
+ * @param {(record: import('./matcher.js').HelpRecord) => void} [options.onMarkerHidden] called when a
+ *   marker's target transitions to hidden (e.g. display:none) — lets the caller close a popup open on it
  * @param {string} [options.markerLabel] character shown on the marker (default '?')
  * @param {import('@floating-ui/dom').Placement} [options.markerPlacement] corner to overlap (default 'top-end')
  */
 export function createMarkerManager(state, {
   onMarkerClick,
   onOverlapResolved,
+  onMarkerHidden,
   markerLabel = '?',
   markerPlacement = 'top-end',
 }) {
@@ -51,7 +54,10 @@ export function createMarkerManager(state, {
 
   function runOverlapPass() {
     rafId = null;
-    const entries = [...markers.values()];
+    // Exclude hidden markers (floating.js sets inline display:none when a target goes display:none):
+    // such a marker measures 0x0 at the origin, so leaving it in would make it count toward the
+    // "<=1, skip" check and push visible markers away from (0,0).
+    const entries = [...markers.values()].filter((e) => e.el.style.display !== 'none');
     // With one marker or fewer, overlap is impossible. Skip getBoundingClientRect (forced reflow)
     // and the O(n^2) push-out math entirely (avoids a per-frame reflow while scrolling on screens
     // with few targets). However, right after dropping from 2 to 1, if the remaining one still has
@@ -105,7 +111,13 @@ export function createMarkerManager(state, {
     const handleClick = () => onMarkerClick(record, el);
     el.addEventListener('click', handleClick);
 
-    const cleanupAnchor = anchorMarker(referenceFor(record), el, scheduleOverlapPass, markerPlacement);
+    const cleanupAnchor = anchorMarker(
+      referenceFor(record),
+      el,
+      scheduleOverlapPass,
+      markerPlacement,
+      () => onMarkerHidden && onMarkerHidden(record),
+    );
 
     // Target-element highlight (element-bound only; free placement has no target, so skip).
     // Show an outline on the target only while the marker is hovered/focused, to make clear "which element this explains".

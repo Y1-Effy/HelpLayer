@@ -7,7 +7,10 @@
  * - The popup uses role="dialog" + aria-labelledby (the title element) to describe itself to assistive tech.
  */
 
-const POPUP_TITLE_ID = 'help-layer-popup-title';
+// Each initHelpLayer instance builds its own popup; a fixed id would collide when the
+// library is initialized more than once on a page (invalid duplicate id + ambiguous
+// aria-labelledby). Hand out a unique id per popup instead.
+let popupSeq = 0;
 
 export function createBlockingLayer() {
   const layer = document.createElement('div');
@@ -33,15 +36,21 @@ export function createMarker(title, label = '?') {
  * Also returns references to titleEl/textEl (used to update the content) and the close button closeEl.
  */
 export function createPopup() {
+  const titleId = `help-layer-popup-title-${popupSeq++}`;
+
   const root = document.createElement('div');
   root.className = 'help-layer-popup';
   root.setAttribute('role', 'dialog');
-  root.setAttribute('aria-labelledby', POPUP_TITLE_ID);
+  // aria-modal tells AT that content outside the dialog is inert while it's shown (the host is also
+  // inert'd at the document level during help mode). Harmless when hidden: display:none drops the
+  // popup from the a11y tree.
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-labelledby', titleId);
   root.tabIndex = -1;
 
   const titleEl = document.createElement('div');
   titleEl.className = 'help-layer-popup__title';
-  titleEl.id = POPUP_TITLE_ID;
+  titleEl.id = titleId;
 
   const textEl = document.createElement('div');
   textEl.className = 'help-layer-popup__text';

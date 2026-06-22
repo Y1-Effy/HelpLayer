@@ -130,6 +130,82 @@ test('a marker stays anchored to its target while scrolling', async({ page }) =>
   expect(Math.abs(after.dy - before.dy)).toBeLessThan(3);
 });
 
+test('while ON, the host is removed from the a11y tree (inert) but the toggle and popup are not', async({ page }) => {
+  const hostInInert = () => page.evaluate(() => !!document.querySelector('#demo-host-click').closest('[inert]'));
+  const toggleInInert = () => page.evaluate(() => !!document.querySelector('#help-layer-toggle').closest('[inert]'));
+
+  // OFF: nothing is inert.
+  expect(await hostInInert()).toBe(false);
+
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  // ON: host content sits inside an inert subtree; the toggle (its own top-level branch) does not.
+  expect(await hostInInert()).toBe(true);
+  expect(await toggleInInert()).toBe(false);
+
+  // The popup is a modal dialog for assistive tech.
+  await page.locator(MARKER).first().click();
+  await expect(page.locator(POPUP)).toHaveAttribute('aria-modal', 'true');
+
+  // OFF: inert is fully removed.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER)).toHaveCount(0);
+  expect(await hostInInert()).toBe(false);
+});
+
+test('a marker hides when its target is hidden and returns when the target is shown', async({ page }) => {
+  // The library tracks target *visibility*: when a target goes display:none, its marker hides too
+  // (rather than collapsing to a 0x0 rect and flinging to the top-left corner), and it reappears on reshow.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  const SEL = '[data-help-id="save"]';
+
+  // Tag the marker for this target (nearest to its top-right corner) so we can re-find the same
+  // element after it hides — its rect collapses to 0x0 once display:none, so proximity no longer works.
+  await page.evaluate((sel) => {
+    const t = document.querySelector(sel).getBoundingClientRect();
+    const corner = { x: t.right, y: t.top };
+    let best = null;
+    for (const m of document.querySelectorAll('.help-layer-marker')) {
+      const r = m.getBoundingClientRect();
+      const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      const d = Math.hypot(c.x - corner.x, c.y - corner.y);
+      if (!best || d < best.d) {
+        best = { d, el: m };
+      }
+    }
+    best.el.dataset.e2eTagged = '1';
+  }, SEL);
+
+  const tagged = page.locator('.help-layer-marker[data-e2e-tagged="1"]');
+  await expect(tagged).toBeVisible();
+
+  // Hiding the target hides its marker (auto-waits across the autoUpdate animation frames).
+  await page.evaluate((sel) => { document.querySelector(sel).style.display = 'none'; }, SEL);
+  await expect(tagged).toBeHidden();
+
+  // Showing it again brings the marker back.
+  await page.evaluate((sel) => { document.querySelector(sel).style.removeProperty('display'); }, SEL);
+  await expect(tagged).toBeVisible();
+});
+
+test('an open popup closes when its target is hidden', async({ page }) => {
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  const SEL = '[data-help-id="save"]';
+  // Open the popup by clicking the marker nearest the save target.
+  const marker = await nearestMarkerTo(page, SEL);
+  await page.mouse.click(marker.x, marker.y);
+  await expect(page.locator(POPUP)).toBeVisible();
+
+  // Hiding the target collapses its marker; the popup that was open on it should close too.
+  await page.evaluate((sel) => { document.querySelector(sel).style.display = 'none'; }, SEL);
+  await expect(page.locator(POPUP)).toBeHidden();
+});
+
 test('a marker on a position:fixed target uses the fixed strategy (no scroll jitter)', async({ page }) => {
   // A marker anchored to a fixed element must itself be position:fixed; otherwise it scrolls with the
   // document and visibly jitters while the fixed target stays put. A normal target keeps using absolute.

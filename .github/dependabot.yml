@@ -1,0 +1,14 @@
+# Surface dependency and Action updates as PRs so security/maintenance fixes aren't missed.
+version: 2
+updates:
+  # Runtime + dev npm dependencies (package.json at the repo root).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Actions pinned in .github/workflows (checkout, setup-node, upload-artifact, etc.).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

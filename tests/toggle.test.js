@@ -1,9 +1,16 @@
 /** @jest-environment jsdom */
 import { jest } from '@jest/globals';
 
+// Records every anchorMarker invocation (ref + its onHidden callback) so a test can drive the
+// visible -> hidden transition without the real Floating UI update loop.
+const anchorMarkerCalls = [];
+
 // We don't need real DOM layout for placement, so mock floating.js.
 jest.unstable_mockModule('../src/floating.js', () => ({
-  anchorMarker: jest.fn(() => jest.fn()),
+  anchorMarker: jest.fn((ref, el, onPlaced, placement, onHidden) => {
+    anchorMarkerCalls.push({ ref, onHidden });
+    return jest.fn();
+  }),
   anchorPopup: jest.fn(() => ({ update: jest.fn(), cleanup: jest.fn() })),
   makeVirtualElement: jest.fn((getRect) => ({ getBoundingClientRect: getRect })),
   watchReference: jest.fn(() => jest.fn()),
@@ -21,6 +28,7 @@ const config = {
 let toggleEl;
 
 beforeEach(() => {
+  anchorMarkerCalls.length = 0;
   // Don't actually fire markers' overlap-avoidance rAF (just return an id).
   global.requestAnimationFrame = jest.fn(() => 1);
   global.cancelAnimationFrame = jest.fn();
@@ -50,6 +58,25 @@ describe('createToggleController', () => {
     expect(document.querySelector('.help-layer-blocking-layer')).not.toBeNull();
     expect(document.querySelector('.help-layer-popup')).not.toBeNull();
     expect(document.head.querySelector('[data-help-layer-style]')).not.toBeNull();
+
+    controller.destroy();
+  });
+
+  it('closes an open popup when its target becomes hidden (display:none)', () => {
+    const controller = createToggleController({ config, toggle: toggleEl });
+    controller.enable();
+    controller.open('save');
+    const popupEl = document.querySelector('.help-layer-popup');
+    expect(popupEl.style.display).toBe('block');
+
+    // Drive the save marker's visible -> hidden transition (anchorMarker's onHidden callback).
+    const saveCall = anchorMarkerCalls.find(
+      (c) => c.ref instanceof HTMLElement && c.ref.getAttribute('data-help-id') === 'save',
+    );
+    expect(saveCall).toBeTruthy();
+    saveCall.onHidden();
+
+    expect(popupEl.style.display).toBe('none');
 
     controller.destroy();
   });

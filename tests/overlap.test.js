@@ -46,4 +46,26 @@ describe('resolveOverlaps', () => {
     expect(dist(moved[0], moved[2])).toBeGreaterThanOrEqual(20 - 1);
     expect(dist(moved[1], moved[2])).toBeGreaterThanOrEqual(20 - 1);
   });
+
+  it('scales to many markers without runaway cost (perf guard)', () => {
+    // This is the heaviest hot path with many markers: O(iterations * n^2). A dense grid where many
+    // neighbours overlap is the worst-ish case. The test guards against an accidental complexity
+    // regression (extra nesting -> O(n^3)) or a non-terminating loop, and that no divide-by-zero
+    // produces NaN/Infinity at scale. The time budget is deliberately generous (real cost is a few
+    // ms) so it only trips on a catastrophic regression, never on normal CI hardware variance.
+    const n = 1000;
+    const cols = 40;
+    const centers = [];
+    for (let i = 0; i < n; i++) {
+      centers.push({ x: (i % cols) * 10, y: Math.floor(i / cols) * 10 });
+    }
+
+    const start = Date.now();
+    const offsets = resolveOverlaps(centers);
+    const elapsed = Date.now() - start;
+
+    expect(offsets).toHaveLength(n);
+    expect(offsets.every((o) => Number.isFinite(o.dx) && Number.isFinite(o.dy))).toBe(true);
+    expect(elapsed).toBeLessThan(1000);
+  });
 });

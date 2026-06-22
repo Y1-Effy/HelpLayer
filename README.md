@@ -3,6 +3,7 @@
 [![npm](https://img.shields.io/npm/v/help-layer.svg)](https://www.npmjs.com/package/help-layer)
 [![license](https://img.shields.io/npm/l/help-layer.svg)](./LICENSE)
 [![repo](https://img.shields.io/badge/GitHub-Y1--Effy%2FHelpLayer-181717?logo=github)](https://github.com/Y1-Effy/HelpLayer)
+[![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Y1-Effy/f1479376394b26b678f9e97095d88d95/raw/coverage.json)](https://github.com/Y1-Effy/HelpLayer/actions/workflows/ci.yml)
 
 **English** | [日本語](./README.ja.md)
 
@@ -16,7 +17,7 @@ It never touches the host app's own event listeners — a transparent blocking l
 
 - Only one dependency, [`@floating-ui/dom`](https://floating-ui.com/); lightweight (the prebuilt IIFE is ~33KB minified, with `@floating-ui/dom` bundled in)
 - Pierces Shadow DOM, keeps up with dynamically added/removed elements in SPAs, avoids marker-to-marker overlap, and auto-adjusts the popup at screen edges
-- Mindful of keyboard use and screen readers (the popup is `role="dialog"`; opening moves focus and closing returns it to the marker; while the mode is on, focus is trapped within the UI, and `Esc` closes it)
+- Mindful of keyboard use and screen readers (the popup is `role="dialog"`; opening moves focus and closing returns it to the marker; while the mode is on, focus is trapped within the UI, and `Esc` closes the popup — or exits the mode when no popup is open)
 - Fully cleans up the DOM, listeners, and styles it added when you turn it OFF
 - Works in modern browsers (Chromium / Firefox / WebKit; e2e is verified across all three engines)
 
@@ -29,7 +30,9 @@ It never touches the host app's own event listeners — a transparent blocking l
 - [Free placement (descriptions not bound to an element)](#free-placement-descriptions-not-bound-to-an-element)
 - [API](#api)
 - [Theming (CSS custom properties)](#theming-css-custom-properties)
+- [Browser & runtime support](#browser--runtime-support)
 - [Known limitations](#known-limitations)
+- [Accessibility](#accessibility)
 - [Security](#security)
 - [Development](#development)
 
@@ -143,7 +146,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 
 ```html
 <script
-  src="https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js"
+  src="https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js"
   integrity="sha384-……(replace with the published file's hash)"
   crossorigin="anonymous"></script>
 <script>
@@ -155,7 +158,7 @@ When loading from a CDN, we recommend **pinning the version** and adding **SRI (
 ```
 
 > Generate the `integrity` hash from the actually published file, e.g.:
-> `curl -s https://unpkg.com/help-layer@1.0.1/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> `curl -s https://unpkg.com/help-layer@1.1.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
 > (If you don't pin the version, the SRI will mismatch and the browser will refuse to load it.)
 
 ## Free placement (descriptions not bound to an element)
@@ -250,13 +253,72 @@ You can change the look just by overriding the following variables in your host 
 | `--help-layer-overlay-bg` | `transparent` | blocking-layer (scrim) background; e.g. `rgba(0,0,0,0.15)` to signal the host is inactive |
 | `--help-layer-overlay-cursor` | `default` | cursor over the blocked area; e.g. `not-allowed` / `help` |
 
+## Browser & runtime support
+
+HelpLayer targets **modern evergreen browsers** (Chrome / Edge, Firefox, Safari) and the Chromium in
+recent Electron. **Internet Explorer 11 is not supported and cannot be** — the library relies on ES2020
+syntax, ES modules, `ResizeObserver`, Shadow DOM, and `clip-path`, none of which IE provides. Packaging
+changes can't bridge this; if you must support genuinely old runtimes, this library is not the right fit.
+
+What sets the minimum (the two newest APIs degrade gracefully, so the practical hard floor is roughly
+**2020-era evergreen**):
+
+| Feature | Used for | Minimum | Fallback |
+|---|---|---|---|
+| ES2020 + ES modules | the whole library | evergreen (~2020) | none — transpile/bundle for older targets |
+| `ResizeObserver` (via `@floating-ui/dom`) | marker/popup auto-positioning | evergreen (~2020) | none |
+| Open Shadow DOM piercing | finding targets inside shadow roots | evergreen | closed shadow roots are unsupported by design |
+| `clip-path: polygon()` | the blocking layer's toggle "hole" | evergreen (very old Safari needs `-webkit-`) | none |
+| `inert` | removing the host from the a11y tree | Chrome 102 / FF 112 / Safari 15.5 (2023) | degrades to visual + keyboard blocking only |
+| `Element.checkVisibility()` | hiding a marker when its target is hidden | Chrome 105 / FF 125 / Safari 17.4 (2024) | falls back to a 0×0-rect check (detects `display:none` only) |
+
+### Module formats
+
+- **ESM (default).** `import { initHelpLayer } from 'help-layer'` resolves to the prebuilt, tested
+  `dist/help-layer.esm.js` (with `@floating-ui/dom` left external for your bundler/npm to resolve).
+- **No bundler / `<script>` / CDN / strict environments.** Use the self-contained IIFE build, which
+  bundles `@floating-ui/dom` and exposes a global `HelpLayer` — see [Use it with just a `<script>`](#use-it-with-just-a-script-no-bundler).
+- **CommonJS (`require`).** No `require` entry is provided: this is a browser-only DOM library, so a Node
+  CJS context can't use it meaningfully. In non-ESM toolchains, consume the ESM build via your bundler,
+  or load the IIFE build above.
+
 ## Known limitations
 
 - Closed Shadow DOM is unreachable from JS, so it is unsupported (only open shadow roots are pierced).
 - The offset that overlaps the marker onto a corner assumes the default marker size (22px). Changing
   `--help-layer-marker-size` significantly may cause a slight drift.
+- **Target *state* changes are not watched** (only *layout* and *presence* are). While ON, a marker
+  follows its target's position/size changes and is added/removed as the target enters/leaves the DOM,
+  and it hides/reshows when the target itself is hidden/shown (e.g. `display:none`). However, changes
+  to a target's **attributes or content** are *not* detected: adding/removing the `data-help-id`
+  attribute on an existing element, rewriting `data-help-title` / `data-help-text`, or toggling state
+  like `disabled` won't update the markers. This is intentional — watching every attribute mutation
+  across the whole document (`MutationObserver` with `attributes: true, subtree: true`) fires on every
+  class/style change and is a performance footgun for a drop-in library. If you change such state,
+  rebuild via `update(config)`, toggle the mode OFF→ON, or re-insert the target element into the DOM
+  (re-insertion is picked up by the `childList` observation).
+
+## Accessibility
+
+While the mode is ON, the host app is blocked not only visually and for pointer/keyboard input, but
+also **semantically for assistive technology**: the host is removed from the accessibility tree with
+the [`inert`](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/inert) attribute, so a
+screen reader's virtual cursor (browse mode) can't read or activate background content. Only the help
+markers, the popup, and your toggle stay reachable. The popup is a `role="dialog"` with
+`aria-modal="true"`, and focus moves into it on open and returns to the marker on close.
+
+Bounded limitations of this isolation:
+
+- `inert` can't be cancelled on a descendant of an inert subtree, so isolation is applied at the
+  document-body top level (like the clip-path "hole" that lets the toggle show through). The toggle
+  must stay operable, so **the top-level branch containing your toggle is left reachable** — keep the
+  toggle at/near the body level to minimize what leaks (none if it's a direct `<body>` child).
+- `inert` is broadly supported in current browsers; on engines without it, the visual/keyboard
+  blocking still applies, but AT exclusion degrades gracefully (no error).
 
 ## Security
+
+To report a vulnerability and for the support / security-release policy, see [SECURITY.md](./SECURITY.md). Please use GitHub's private vulnerability reporting rather than a public issue.
 
 - By design, `title` / `text` are rendered with `textContent` only; `innerHTML` / `eval` / `new Function` are **never used**.
 - There is **no external communication** (`fetch`, etc.) and **no storage use** (`localStorage` / `cookie`) — it runs fully locally.

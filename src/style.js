@@ -13,7 +13,7 @@ const STYLE_ATTR = 'data-help-layer-style';
 
 // The theme is fully exposed via CSS custom properties. Users can change the look just by
 // overriding the following variables in host-side CSS (e.g. :root or any scope):
-//   --help-layer-marker-size       marker diameter (default 22px)
+//   --help-layer-marker-size       marker diameter (default 24px, WCAG 2.5.8 minimum target size)
 //   --help-layer-marker-bg         marker background color (default #2563eb)
 //   --help-layer-marker-color      marker text color (default #fff)
 //   --help-layer-popup-bg          popup background color (default #fff)
@@ -58,15 +58,15 @@ const CSS = `
   pointer-events: auto !important;
   top: 0;
   left: 0;
-  width: var(--help-layer-marker-size, 22px) !important;
-  height: var(--help-layer-marker-size, 22px) !important;
+  width: var(--help-layer-marker-size, 24px) !important;
+  height: var(--help-layer-marker-size, 24px) !important;
   border-radius: 50%;
   background: var(--help-layer-marker-bg, #2563eb);
   color: var(--help-layer-marker-color, #fff);
   font-family: sans-serif;
   font-size: 13px;
   font-weight: bold;
-  line-height: var(--help-layer-marker-size, 22px);
+  line-height: var(--help-layer-marker-size, 24px);
   text-align: center;
   cursor: pointer;
   user-select: none;
@@ -136,8 +136,8 @@ const CSS = `
   pointer-events: auto !important;
   top: 6px;
   right: 6px;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 4px;

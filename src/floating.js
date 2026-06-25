@@ -92,10 +92,10 @@ export function isReferenceHidden(reference) {
   return r.width === 0 && r.height === 0;
 }
 
-// Half of the default marker size (22px). The amount used to overlap the marker onto the
+// Half of the default marker size (24px). The amount used to overlap the marker onto the
 // target's corner with an "inset". (If the marker-size CSS variable is changed, the resulting
 // drift is left as existing behavior = not compensated for here.)
-const MARKER_INSET = 11;
+const MARKER_INSET = 12;
 
 /**
  * Derive the offset for overlapping the marker onto the target's corner from the placement.

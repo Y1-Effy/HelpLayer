@@ -1,6 +1,4 @@
 import pluginImport from 'eslint-plugin-import';
-import pluginN from 'eslint-plugin-n';
-import pluginPromise from 'eslint-plugin-promise';
 
 export default [
   {
@@ -23,8 +21,6 @@ export default [
     },
     plugins: {
       import: pluginImport,
-      promise: pluginPromise,
-      n: pluginN,
     },
     rules: {
       'linebreak-style': ['error', 'unix'],

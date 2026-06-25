@@ -51,8 +51,10 @@ describe('resolveOverlaps', () => {
     // This is the heaviest hot path with many markers: O(iterations * n^2). A dense grid where many
     // neighbours overlap is the worst-ish case. The test guards against an accidental complexity
     // regression (extra nesting -> O(n^3)) or a non-terminating loop, and that no divide-by-zero
-    // produces NaN/Infinity at scale. The time budget is deliberately generous (real cost is a few
-    // ms) so it only trips on a catastrophic regression, never on normal CI hardware variance.
+    // produces NaN/Infinity at scale. The time budget is deliberately generous: the real cost is a
+    // few ms, but `jest --coverage` instrumentation slows this hot loop by orders of magnitude, so
+    // the budget is sized for the instrumented run. It only trips on a catastrophic regression,
+    // never on normal CI hardware variance.
     const n = 1000;
     const cols = 40;
     const centers = [];
@@ -66,6 +68,6 @@ describe('resolveOverlaps', () => {
 
     expect(offsets).toHaveLength(n);
     expect(offsets.every((o) => Number.isFinite(o.dx) && Number.isFinite(o.dy))).toBe(true);
-    expect(elapsed).toBeLessThan(1000);
+    expect(elapsed).toBeLessThan(5000);
   });
 });

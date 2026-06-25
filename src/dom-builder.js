@@ -4,7 +4,8 @@
  *
  * Accessibility:
  * - Markers are <button> elements so they are focusable and can be activated with Enter/Space.
- * - The popup uses role="dialog" + aria-labelledby (the title element) to describe itself to assistive tech.
+ * - The popup uses role="dialog" + aria-labelledby (the title element) so assistive tech announces it,
+ *   plus aria-describedby (the body element) so the description text is read out, not just the title.
  */
 
 // Each initHelpLayer instance builds its own popup; a fixed id would collide when the
@@ -36,7 +37,11 @@ export function createMarker(title, label = '?') {
  * Also returns references to titleEl/textEl (used to update the content) and the close button closeEl.
  */
 export function createPopup() {
-  const titleId = `help-layer-popup-title-${popupSeq++}`;
+  // One sequence value per popup, shared by the title and body ids (then advanced once), so two
+  // instances on a page never collide on either id.
+  const seq = popupSeq++;
+  const titleId = `help-layer-popup-title-${seq}`;
+  const textId = `help-layer-popup-text-${seq}`;
 
   const root = document.createElement('div');
   root.className = 'help-layer-popup';
@@ -46,6 +51,9 @@ export function createPopup() {
   // popup from the a11y tree.
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-labelledby', titleId);
+  // Point at the body container (not its contents) so the description is announced even after a custom
+  // render swaps the body's children — the container id stays stable.
+  root.setAttribute('aria-describedby', textId);
   root.tabIndex = -1;
 
   const titleEl = document.createElement('div');
@@ -54,6 +62,7 @@ export function createPopup() {
 
   const textEl = document.createElement('div');
   textEl.className = 'help-layer-popup__text';
+  textEl.id = textId;
 
   // Explicit close affordance. Wiring the click is popup.js's job (only element creation here).
   const closeEl = document.createElement('button');

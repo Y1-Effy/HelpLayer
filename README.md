@@ -29,6 +29,7 @@ It never touches the host app's own event listeners — a transparent blocking l
 - [Quick start](#quick-start)
 - [Free placement (descriptions not bound to an element)](#free-placement-descriptions-not-bound-to-an-element)
 - [API](#api)
+- [Recipes on top of the API (analytics, deep-linking, search, frameworks)](./TECHNICAL.md)
 - [Theming (CSS custom properties)](#theming-css-custom-properties)
 - [Browser & runtime support](#browser--runtime-support)
 - [Known limitations](#known-limitations)
@@ -66,6 +67,9 @@ interaction), and it **fully cleans up on ON→OFF**.
 > delivery, complex flow guidance, and onboarding automation are out of scope — it commits to
 > **satisfying just the core "show explanations in-screen" function at minimal cost**. Conversely, if your
 > main goal is to drive strong funnels or measure usage, a DAP or a tour is the better fit.
+>
+> That said, several of these (analytics, deep-linking, a search palette, framework glue) are easy to
+> build *on top* of the public API in a few lines — see **[TECHNICAL.md](./TECHNICAL.md)** for recipes.
 
 ## When it fits (where adoption pays off)
 

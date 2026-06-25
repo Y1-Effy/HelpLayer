@@ -33,6 +33,7 @@ It never touches the host app's own event listeners — a transparent blocking l
 - [Theming (CSS custom properties)](#theming-css-custom-properties)
 - [Browser & runtime support](#browser--runtime-support)
 - [Known limitations](#known-limitations)
+- [Performance (how many markers)](#performance-how-many-markers)
 - [Accessibility](#accessibility)
 - [Security](#security)
 - [Development](#development)
@@ -246,7 +247,7 @@ You can change the look just by overriding the following variables in your host 
 
 | Variable | Default | Purpose |
 |------|------|------|
-| `--help-layer-marker-size` | `22px` | marker diameter |
+| `--help-layer-marker-size` | `24px` | marker diameter (default meets WCAG 2.5.8 minimum target size) |
 | `--help-layer-marker-bg` | `#2563eb` | marker background color |
 | `--help-layer-marker-color` | `#fff` | marker text color |
 | `--help-layer-popup-bg` | `#fff` | popup background color |
@@ -289,7 +290,7 @@ What sets the minimum (the two newest APIs degrade gracefully, so the practical 
 ## Known limitations
 
 - Closed Shadow DOM is unreachable from JS, so it is unsupported (only open shadow roots are pierced).
-- The offset that overlaps the marker onto a corner assumes the default marker size (22px). Changing
+- The offset that overlaps the marker onto a corner assumes the default marker size (24px). Changing
   `--help-layer-marker-size` significantly may cause a slight drift.
 - **Target *state* changes are not watched** (only *layout* and *presence* are). While ON, a marker
   follows its target's position/size changes and is added/removed as the target enters/leaves the DOM,
@@ -301,6 +302,33 @@ What sets the minimum (the two newest APIs degrade gracefully, so the practical 
   class/style change and is a performance footgun for a drop-in library. If you change such state,
   rebuild via `update(config)`, toggle the mode OFF→ON, or re-insert the target element into the DOM
   (re-insertion is picked up by the `childList` observation).
+
+## Performance (how many markers)
+
+The cost scales with the number of **markers visible at once**, not with the size of your `config`.
+Each marker sticks to its target via Floating UI's animation-frame `autoUpdate`, so while the page
+scrolls or animates, every visible marker re-runs its positioning (plus a layout read) each frame.
+Markers only exist **while the mode is ON and only for targets currently present and shown** — a target
+hidden via `display:none` (or otherwise reported hidden by `checkVisibility`) has its marker excluded
+from positioning, layout measurement, and overlap avoidance. So what matters is "how many are on the
+page right now," not how many keys you registered.
+
+Marker-to-marker overlap avoidance is `O(n²)` per pass, but it's capped at a few iterations with a small
+constant — the math for even ~1000 markers completes in a few milliseconds, and each pass reads each
+marker's rect only once. In practice the first thing you'd feel isn't that math; it's the per-frame
+tracking work that grows linearly with the number of visible markers.
+
+Rough guidance (markers shown **at the same time**):
+
+- **Up to ~50** — comfortable.
+- **Up to ~100** — practical on typical hardware.
+- **Beyond a few hundred** — the per-frame tracking during scroll/animation starts to show.
+
+If you find yourself needing more, remember the mode is **exploratory** — users pick the spot they want,
+so a screen rarely needs more than a few dozen markers. On large pages, scope your targets, or split them
+per page/tab (e.g. swap sets with `update(config)`, or use a different `attribute`) to keep the number
+shown at once down. This mirrors the deliberate choice in [Known limitations](#known-limitations) not to
+watch every attribute mutation across the document — both avoid per-frame work that doesn't pay for itself.
 
 ## Accessibility
 

@@ -243,4 +243,78 @@ describe('createPopupController', () => {
     expect(popup.root.getAttribute('role')).toBe('dialog');
     expect(popup.root.getAttribute('aria-modal')).toBe('true');
   });
+
+  it('describes the dialog by its body so AT reads the description, not just the title', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+
+    const textEl = popup.root.querySelector('.help-layer-popup__text');
+    const titleEl = popup.root.querySelector('.help-layer-popup__title');
+    // aria-describedby must point at the body container (a real, distinct id from the title's).
+    expect(textEl.id).toBeTruthy();
+    expect(textEl.id).not.toBe(titleEl.id);
+    expect(popup.root.getAttribute('aria-describedby')).toBe(textEl.id);
+  });
+
+  it('gives each popup a unique body id so two instances on one page do not collide', () => {
+    const state = createState();
+    const first = createPopupController(state);
+    const second = createPopupController(state);
+
+    const firstText = first.root.querySelector('.help-layer-popup__text');
+    const secondText = second.root.querySelector('.help-layer-popup__text');
+
+    expect(firstText.id).not.toBe(secondText.id);
+    expect(first.root.getAttribute('aria-describedby')).toBe(firstText.id);
+    expect(second.root.getAttribute('aria-describedby')).toBe(secondText.id);
+  });
+
+  it('traps Tab inside the open dialog (aria-modal contract)', () => {
+    // Add a focusable to the body via render so the trap has two stops (the link and the × button).
+    const link = document.createElement('a');
+    link.href = 'https://example.com';
+    link.textContent = 'Learn more';
+    const state = createState();
+    const popup = createPopupController(state, { render: () => link });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    const closeBtn = popup.root.querySelector('.help-layer-popup__close');
+
+    // Tab from the dialog root lands on the first focusable (the link).
+    const tab = () => popup.root.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    );
+    tab();
+    expect(document.activeElement).toBe(link);
+    // Tab off the last wraps back to the first.
+    closeBtn.focus();
+    tab();
+    expect(document.activeElement).toBe(link);
+    // Shift+Tab off the first wraps to the last.
+    link.focus();
+    popup.root.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
+    );
+    expect(document.activeElement).toBe(closeBtn);
+  });
+
+  it('stops trapping Tab once the dialog is closed', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    const marker = document.createElement('button');
+    const outside = document.createElement('button');
+    document.body.append(marker, outside);
+
+    popup.open(record, marker);
+    popup.close();
+
+    // After close the handler is detached, so a Tab on the root no longer steals focus.
+    outside.focus();
+    popup.root.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    );
+    expect(document.activeElement).toBe(outside);
+  });
 });

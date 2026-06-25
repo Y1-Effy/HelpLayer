@@ -42,6 +42,34 @@ export function createPopupController(state, { onClose, render, popupPlacement =
     }
   }
 
+  // Focus trap. aria-modal="true" promises AT that the rest of the page is inert, but keyboard Tab
+  // would still escape to the markers/toggle behind the popup (they're "library elements", so the
+  // blocking layer lets their keys through). Keep Tab cycling inside the dialog to match the promise.
+  const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  function trapTab(event) {
+    if (event.key !== 'Tab') {
+      return;
+    }
+    // Recompute every keypress: a custom render() can add its own focusables to the body. We don't
+    // filter by layout visibility here — the popup's contents are controlled (a close button plus
+    // whatever render returns), and a layout probe (offsetParent/getClientRects) is unreliable anyway.
+    const focusable = [...root.querySelectorAll(FOCUSABLE)].filter((el) => el instanceof HTMLElement);
+    event.preventDefault();
+    if (focusable.length === 0) {
+      // Nothing focusable inside: hold focus on the dialog itself rather than letting it escape.
+      root.focus({ preventScroll: true });
+      return;
+    }
+    const count = focusable.length;
+    const index = focusable.indexOf(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    // Step in the requested direction, wrapping at both ends. When focus is on the dialog root
+    // (index -1), Tab starts at the first element and Shift+Tab at the last.
+    const next = index === -1
+      ? (event.shiftKey ? focusable[count - 1] : focusable[0])
+      : focusable[(index + (event.shiftKey ? -1 : 1) + count) % count];
+    next.focus({ preventScroll: true });
+  }
+
   /**
    * @param {import('./matcher.js').HelpRecord} record
    * @param {HTMLElement} referenceEl placement reference (the clicked marker element)
@@ -64,6 +92,10 @@ export function createPopupController(state, { onClose, render, popupPlacement =
     stopAnchor();
     anchor = anchorPopup(referenceEl, root, popupPlacement);
 
+    // Keep Tab inside the dialog while it's open (removed in hide()). Capture phase so it runs before
+    // any focusable's own keydown can act on the Tab.
+    root.addEventListener('keydown', trapTab, true);
+
     // preventScroll: the popup is positioned asynchronously (computePosition().then), so at this
     // point it's still at its stale position; a default focus would scroll toward that, causing a
     // visible jump. flip/shift keep it in the viewport, so suppressing the scroll is safe.
@@ -82,6 +114,7 @@ export function createPopupController(state, { onClose, render, popupPlacement =
     // Call onClose only if it was open (catches both the close-path and teardown-path close routes at one point).
     const wasOpen = openId !== null;
     stopAnchor();
+    root.removeEventListener('keydown', trapTab, true);
     openId = null;
     triggerEl = null;
     root.style.setProperty('display', 'none', 'important');

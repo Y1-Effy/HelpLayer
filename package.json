@@ -45,8 +45,8 @@
   "devDependencies": {
     "@playwright/test": "^1.61.0",
     "esbuild": "^0.28.1",
-    "eslint": "^9.39.2",
-    "eslint-plugin-import": "^2.32.0",
+    "eslint": "^10.5.0",
+    "eslint-plugin-import-x": "^4.17.0",
     "gifenc": "^1.0.3",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",

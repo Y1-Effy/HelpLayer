@@ -1,4 +1,4 @@
-import pluginImport from 'eslint-plugin-import';
+import pluginImportX from 'eslint-plugin-import-x';
 
 export default [
   {
@@ -20,7 +20,7 @@ export default [
       },
     },
     plugins: {
-      import: pluginImport,
+      import: pluginImportX,
     },
     rules: {
       'linebreak-style': ['error', 'unix'],

@@ -196,6 +196,31 @@ test('while ON, the host is removed from the a11y tree (inert) but the toggle an
   expect(await hostInInert()).toBe(false);
 });
 
+test('Tab stays trapped inside the open popup (aria-modal contract)', async({ page }) => {
+  // aria-modal promises the rest of the page is inert; back it up with a real focus trap so keyboard
+  // Tab can't walk out to the markers/toggle behind the dialog. jsdom can't observe real Tab focus moves.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  await page.locator(MARKER).first().click();
+  await expect(page.locator(POPUP)).toBeVisible();
+
+  const inPopup = () => page.evaluate(() => !!(
+    document.activeElement && document.activeElement.closest('.help-layer-popup')
+  ));
+
+  // Tab several times; focus must never escape the dialog subtree.
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('Tab');
+    expect(await inPopup()).toBe(true);
+  }
+  // Shift+Tab too.
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('Shift+Tab');
+    expect(await inPopup()).toBe(true);
+  }
+});
+
 test('a marker hides when its target is hidden and returns when the target is shown', async({ page }) => {
   // The library tracks target *visibility*: when a target goes display:none, its marker hides too
   // (rather than collapsing to a 0x0 rect and flinging to the top-left corner), and it reappears on reshow.

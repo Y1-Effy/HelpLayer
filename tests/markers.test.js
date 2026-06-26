@@ -83,8 +83,8 @@ describe('createMarkerManager', () => {
   });
 
   it('positions a marker per markerPlacement (the loop writes left/top)', () => {
-    // jsdom reports a 0x0 reference rect and offsetWidth 0, so the marker size falls back to 22.
-    // bottom-start of a rect at (0,0): top = 0 + height - 11 = -11; left = 0 + 11 = 11.
+    // jsdom reports a 0x0 reference rect and offsetWidth 0, so the marker size falls back to 24.
+    // bottom-start of a rect at (0,0): top = 0 + height - 12 = -12; left = 0 + 12 = 12.
     const state = createState();
     const manager = createMarkerManager(state, {
       onMarkerClick: jest.fn(),
@@ -95,8 +95,8 @@ describe('createMarkerManager', () => {
     runFrames();
 
     const markerEl = document.querySelector('.help-layer-marker');
-    expect(markerEl.style.left).toBe('11px');
-    expect(markerEl.style.top).toBe('-11px');
+    expect(markerEl.style.left).toBe('12px');
+    expect(markerEl.style.top).toBe('-12px');
   });
 
   it('uses the fixed strategy (inline position) for a fixed reference', () => {

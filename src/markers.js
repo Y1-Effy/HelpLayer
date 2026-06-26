@@ -26,7 +26,7 @@ const TARGET_HIGHLIGHT_CLASS = 'help-layer-target-highlight';
 
 // Fallback marker size if the real size can't be measured yet (matches the CSS default). Used only
 // until a laid-out marker reports a non-zero offsetWidth, which is then cached.
-const DEFAULT_MARKER_SIZE = 22;
+const DEFAULT_MARKER_SIZE = 24;
 
 /** @param {import('./matcher.js').HelpRecord} record */
 function referenceFor(record) {

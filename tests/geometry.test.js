@@ -37,50 +37,50 @@ describe('docRectToViewportRect', () => {
 });
 
 describe('markerViewportTopLeft', () => {
-  // size 22 -> INSET 11 (half). Hand-derived to match the old computePosition(placement) + offset path.
+  // size 24 -> INSET 12 (half). Hand-derived to match the old computePosition(placement) + offset path.
   const ref = { top: 100, left: 200, width: 80, height: 40 };
-  const SIZE = 22;
+  const SIZE = 24;
 
   it('overlaps the top-end corner (default)', () => {
-    // above and bitten 11px down (top - size + 11), right edges aligned then nudged 11px inward.
-    expect(markerViewportTopLeft(ref, SIZE, 'top-end')).toEqual({ left: 247, top: 89 });
+    // above and bitten 12px down (top - size + 12), right edges aligned then nudged 12px inward.
+    expect(markerViewportTopLeft(ref, SIZE, 'top-end')).toEqual({ left: 244, top: 88 });
   });
 
   it('overlaps the top-start corner', () => {
-    expect(markerViewportTopLeft(ref, SIZE, 'top-start')).toEqual({ left: 211, top: 89 });
+    expect(markerViewportTopLeft(ref, SIZE, 'top-start')).toEqual({ left: 212, top: 88 });
   });
 
   it('overlaps the bottom-end corner', () => {
-    expect(markerViewportTopLeft(ref, SIZE, 'bottom-end')).toEqual({ left: 247, top: 129 });
+    expect(markerViewportTopLeft(ref, SIZE, 'bottom-end')).toEqual({ left: 244, top: 128 });
   });
 
   it('overlaps the bottom-start corner', () => {
-    expect(markerViewportTopLeft(ref, SIZE, 'bottom-start')).toEqual({ left: 211, top: 129 });
+    expect(markerViewportTopLeft(ref, SIZE, 'bottom-start')).toEqual({ left: 212, top: 128 });
   });
 
   it('defaults to top-end when no placement is given', () => {
-    expect(markerViewportTopLeft(ref, SIZE)).toEqual({ left: 247, top: 89 });
+    expect(markerViewportTopLeft(ref, SIZE)).toEqual({ left: 244, top: 88 });
   });
 
   it('centers on the cross axis for a bare side (no alignment)', () => {
-    // 'top' (no -start/-end): horizontally centered on the target, then nudged 11px inward.
-    // left = 200 + 80/2 - 22/2 = 229, minus 11 (cross) = 218; top = 100 - 22 + 11 = 89.
-    expect(markerViewportTopLeft(ref, SIZE, 'top')).toEqual({ left: 218, top: 89 });
+    // 'top' (no -start/-end): horizontally centered on the target, then nudged 12px inward.
+    // left = 200 + 80/2 - 24/2 = 228, minus 12 (cross) = 216; top = 100 - 24 + 12 = 88.
+    expect(markerViewportTopLeft(ref, SIZE, 'top')).toEqual({ left: 216, top: 88 });
   });
 
   it('overlaps the left-start corner (horizontal placement)', () => {
-    // side left: left = 200 - 22 + 11 = 189; start: top = ref.top = 100, plus 11 (cross) = 111.
-    expect(markerViewportTopLeft(ref, SIZE, 'left-start')).toEqual({ left: 189, top: 111 });
+    // side left: left = 200 - 24 + 12 = 188; start: top = ref.top = 100, plus 12 (cross) = 112.
+    expect(markerViewportTopLeft(ref, SIZE, 'left-start')).toEqual({ left: 188, top: 112 });
   });
 
   it('overlaps the right-end corner (horizontal placement)', () => {
-    // side right: left = 200 + 80 - 11 = 269; end: top = 100 + 40 - 22 = 118, minus 11 (cross) = 107.
-    expect(markerViewportTopLeft(ref, SIZE, 'right-end')).toEqual({ left: 269, top: 107 });
+    // side right: left = 200 + 80 - 12 = 268; end: top = 100 + 40 - 24 = 116, minus 12 (cross) = 104.
+    expect(markerViewportTopLeft(ref, SIZE, 'right-end')).toEqual({ left: 268, top: 104 });
   });
 
   it('centers vertically for a bare horizontal side', () => {
-    // 'left' (no align): left = 189; top center = 100 + 40/2 - 22/2 = 109, minus 11 (cross) = 98.
-    expect(markerViewportTopLeft(ref, SIZE, 'left')).toEqual({ left: 189, top: 98 });
+    // 'left' (no align): left = 188; top center = 100 + 40/2 - 24/2 = 108, minus 12 (cross) = 96.
+    expect(markerViewportTopLeft(ref, SIZE, 'left')).toEqual({ left: 188, top: 96 });
   });
 });
 

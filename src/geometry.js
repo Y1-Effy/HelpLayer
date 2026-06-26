@@ -40,10 +40,10 @@ export function docRectToViewportRect(docRect, scroll) {
   };
 }
 
-// Half of the default marker size (22px). The marker bites this far inward past the target's edge so
+// Half of the default marker size (24px). The marker bites this far inward past the target's edge so
 // it overlaps the corner with an "inset". (If the marker-size CSS variable is changed, the marker
 // size is read at runtime in markers.js, but this inset stays fixed = existing behavior.)
-export const MARKER_INSET = 11;
+export const MARKER_INSET = 12;
 
 /**
  * Compute a marker's top-left in viewport coordinates so it overlaps a corner of the reference rect,

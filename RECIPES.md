@@ -1,6 +1,6 @@
 # HelpLayer — Recipes on top of the public API
 
-**English** | [日本語](./TECHNICAL.ja.md)
+**English** | [日本語](./RECIPES.ja.md)
 
 HelpLayer keeps its core small on purpose: a help **mode** you toggle, markers that open a
 description popup, and full cleanup on OFF. Analytics, deep-linking, a search palette, framework

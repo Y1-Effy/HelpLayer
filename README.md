@@ -15,7 +15,7 @@ A **framework-agnostic "help mode" library you can drop into any existing web ap
 While the mode is ON, it shows a "?" marker next to each target element; clicking it opens a description popup. The normal appearance is completely unchanged.
 It never touches the host app's own event listeners — a transparent blocking layer absorbs interaction instead — so you can adopt it without rewriting existing code.
 
-- Only one dependency, [`@floating-ui/dom`](https://floating-ui.com/); lightweight (the prebuilt IIFE is ~33KB minified, with `@floating-ui/dom` bundled in)
+- Zero runtime dependencies; lightweight (the prebuilt IIFE is ~20KB minified)
 - Pierces Shadow DOM, keeps up with dynamically added/removed elements in SPAs, avoids marker-to-marker overlap, and auto-adjusts the popup at screen edges
 - Mindful of keyboard use and screen readers (the popup is `role="dialog"`; opening moves focus and closing returns it to the marker; while the mode is on, focus is trapped within the UI, and `Esc` closes the popup — or exits the mode when no popup is open)
 - Fully cleans up the DOM, listeners, and styles it added when you turn it OFF
@@ -29,7 +29,7 @@ It never touches the host app's own event listeners — a transparent blocking l
 - [Quick start](#quick-start)
 - [Free placement (descriptions not bound to an element)](#free-placement-descriptions-not-bound-to-an-element)
 - [API](#api)
-- [Recipes on top of the API (analytics, deep-linking, search, frameworks)](./TECHNICAL.md)
+- [Recipes on top of the API (analytics, deep-linking, search, frameworks)](./RECIPES.md)
 - [Theming (CSS custom properties)](#theming-css-custom-properties)
 - [Browser & runtime support](#browser--runtime-support)
 - [Known limitations](#known-limitations)
@@ -49,7 +49,7 @@ them on the spot,"** aiming to sacrifice neither the normal look nor your existi
 - **vs. always-on tooltips** … It never clutters the UI by showing explanations all the time. Markers
   appear **only while the mode is ON**, so **the normal design is completely unchanged**.
 - **vs. DAP SaaS (Digital Adoption Platform)** … No external platform, contract, or tracking required —
-  **zero running cost, one dependency, ~33KB, fully local**. It also supports CSP / Trusted Types, so it
+  **zero running cost, zero dependencies, ~20KB, fully local**. It also supports CSP / Trusted Types, so it
   fits environments with strict constraints on what you can bring in.
 
 On top of that, they all share a common core: you can **drop it in without rewriting existing code**, it's
@@ -61,7 +61,7 @@ interaction), and it **fully cleans up on ON→OFF**.
 | Presentation | tends to be linear steps | tends to be always visible | service-dependent | **only while ON · explore any spot** |
 | Normal UI | depends on implementation | tends to get cluttered | depends on implementation | **left entirely unchanged** |
 | Adoption | usually needs integration | add CSS/JS | snippet + external platform + contract | **drop-in · no existing-code changes** |
-| Cost / ops | depends on implementation | local | monthly fee + tracking ops | **zero running cost · one dependency** |
+| Cost / ops | depends on implementation | local | monthly fee + tracking ops | **zero running cost · zero dependencies** |
 
 > Note: HelpLayer is **not a full replacement for a DAP**. Advanced features like analytics, segmented
 > delivery, complex flow guidance, and onboarding automation are out of scope — it commits to
@@ -69,13 +69,13 @@ interaction), and it **fully cleans up on ON→OFF**.
 > main goal is to drive strong funnels or measure usage, a DAP or a tour is the better fit.
 >
 > That said, several of these (analytics, deep-linking, a search palette, framework glue) are easy to
-> build *on top* of the public API in a few lines — see **[TECHNICAL.md](./TECHNICAL.md)** for recipes.
+> build *on top* of the public API in a few lines — see **[RECIPES.md](./RECIPES.md)** for recipes.
 
 ## When it fits (where adoption pays off)
 
 - **A DAP / guide SaaS isn't worth the cost and you're considering canceling — but canceling drops your
   in-screen help back to zero.**
-  → Keep just the core "show explanations in-screen" function in-house, with one dependency and zero
+  → Keep just the core "show explanations in-screen" function in-house, with zero dependencies and zero
   running cost. It gives you a place to land after switching away.
 - **You don't have the budget to contract a SaaS, but you want to expand your help.**
   → Drop it in with npm or a single `<script>`. No monthly fee, no account.
@@ -261,7 +261,7 @@ You can change the look just by overriding the following variables in your host 
 
 HelpLayer targets **modern evergreen browsers** (Chrome / Edge, Firefox, Safari) and the Chromium in
 recent Electron. **Internet Explorer 11 is not supported and cannot be** — the library relies on ES2020
-syntax, ES modules, `ResizeObserver`, Shadow DOM, and `clip-path`, none of which IE provides. Packaging
+syntax, ES modules, Shadow DOM, and `clip-path`, none of which IE provides. Packaging
 changes can't bridge this; if you must support genuinely old runtimes, this library is not the right fit.
 
 What sets the minimum (the two newest APIs degrade gracefully, so the practical hard floor is roughly
@@ -270,7 +270,7 @@ What sets the minimum (the two newest APIs degrade gracefully, so the practical 
 | Feature | Used for | Minimum | Fallback |
 |---|---|---|---|
 | ES2020 + ES modules | the whole library | evergreen (~2020) | none — transpile/bundle for older targets |
-| `ResizeObserver` (via `@floating-ui/dom`) | marker/popup auto-positioning | evergreen (~2020) | none |
+| `requestAnimationFrame` | marker/popup auto-positioning (per-frame tracking) | evergreen | none |
 | Open Shadow DOM piercing | finding targets inside shadow roots | evergreen | closed shadow roots are unsupported by design |
 | `clip-path: polygon()` | the blocking layer's toggle "hole" | evergreen (very old Safari needs `-webkit-`) | none |
 | `inert` | removing the host from the a11y tree | Chrome 102 / FF 112 / Safari 15.5 (2023) | degrades to visual + keyboard blocking only |
@@ -279,9 +279,9 @@ What sets the minimum (the two newest APIs degrade gracefully, so the practical 
 ### Module formats
 
 - **ESM (default).** `import { initHelpLayer } from 'help-layer'` resolves to the prebuilt, tested
-  `dist/help-layer.esm.js` (with `@floating-ui/dom` left external for your bundler/npm to resolve).
+  `dist/help-layer.esm.js` (self-contained — no runtime dependencies to resolve).
 - **No bundler / `<script>` / CDN / strict environments.** Use the self-contained IIFE build, which
-  bundles `@floating-ui/dom` and exposes a global `HelpLayer` — see [Use it with just a `<script>`](#use-it-with-just-a-script-no-bundler).
+  exposes a global `HelpLayer` — see [Use it with just a `<script>`](#use-it-with-just-a-script-no-bundler).
 - **CommonJS (`require`).** No `require` entry is provided: this is a browser-only DOM library, so a Node
   CJS context can't use it meaningfully. In non-ESM toolchains, consume the ESM build via your bundler,
   or load the IIFE build above.
@@ -328,7 +328,7 @@ To report a vulnerability and for the support / security-release policy, see [SE
 - There is **no external communication** (`fetch`, etc.) and **no storage use** (`localStorage` / `cookie`) — it runs fully locally.
 - The only path through which untrusted data is inserted into the DOM as HTML / DOM nodes is the `render` option. Its return value is not sanitized, so
   neutralize it on the caller side if it contains user input (see "Line breaks & links in the body" above).
-- The only runtime dependency is `@floating-ui/dom`. When using a CDN, pin the version and add SRI as noted above.
+- The library has no runtime dependencies. When using a CDN, pin the version and add SRI as noted above.
 
 ### Content Security Policy (CSP)
 

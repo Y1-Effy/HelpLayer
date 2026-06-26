@@ -258,6 +258,51 @@ describe('createToggleController', () => {
     expect(() => createToggleController({ config: { x: { title: '' } }, toggle: toggleEl })).toThrow();
   });
 
+  it('works without a config: inline-only elements still get markers', () => {
+    // The data-help-id "save" element from beforeEach has no inline def, so with no config it's skipped.
+    // Add an element defined purely via inline data-help-title / data-help-text.
+    const inline = document.createElement('button');
+    inline.setAttribute('data-help-title', 'Inline');
+    inline.setAttribute('data-help-text', 'Defined entirely in markup');
+    document.body.appendChild(inline);
+
+    let controller;
+    // Omitting config must not throw (config defaults to {}).
+    expect(() => {
+      controller = createToggleController({ toggle: toggleEl, silent: true });
+    }).not.toThrow();
+
+    controller.enable();
+
+    // Only the inline element is a target; the bare data-help-id element is skipped.
+    expect(markerCount()).toBe(1);
+
+    controller.destroy();
+  });
+
+  it('warns on an unknown (mistyped) option', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // markerLabal is a typo for markerLabel; it would otherwise be dropped silently.
+    const controller = createToggleController({ config, toggle: toggleEl, markerLabal: '!' });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('unknown option "markerLabal"'));
+
+    controller.destroy();
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn on unknown options with silent:true', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const controller = createToggleController({ config, toggle: toggleEl, markerLabal: '!', silent: true });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    controller.destroy();
+    warnSpy.mockRestore();
+  });
+
   it('throws when the toggle is not found', () => {
     expect(() => createToggleController({ config, toggle: '#missing' })).toThrow();
   });
@@ -509,7 +554,8 @@ describe('createToggleController', () => {
       warnSpy.mockRestore();
     });
 
-    it('open(key) opens the first marker when several elements share the key', () => {
+    it('open(key) opens the first marker and warns when several elements share the key', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const onOpen = jest.fn();
       const duplicate = document.createElement('button');
       duplicate.setAttribute('data-help-id', 'save');
@@ -523,8 +569,63 @@ describe('createToggleController', () => {
       expect(() => controller.open('save')).not.toThrow();
       expect(onOpen).toHaveBeenCalledTimes(1);
       expect(popupDisplay()).toBe('block');
+      // The ambiguity (which of the duplicates opens) is surfaced, not silent.
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('share'));
 
       controller.destroy();
+      warnSpy.mockRestore();
+    });
+
+    it('open(key) for duplicate ids stays silent with silent:true', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const duplicate = document.createElement('button');
+      duplicate.setAttribute('data-help-id', 'save');
+      document.body.appendChild(duplicate);
+
+      const controller = createToggleController({ config, toggle: toggleEl, silent: true });
+      controller.enable();
+
+      controller.open('save');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(popupDisplay()).toBe('block');
+
+      controller.destroy();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('diagnose / debug', () => {
+    it('diagnose() returns a runtime report of the current DOM mapping (works while OFF)', () => {
+      const quiet = ['group', 'groupEnd', 'table', 'info', 'warn']
+        .map((method) => jest.spyOn(console, method).mockImplementation(() => {}));
+      const ghost = document.createElement('button');
+      ghost.setAttribute('data-help-id', 'ghost'); // in DOM, not in config, no inline def
+      document.body.appendChild(ghost);
+
+      const controller = createToggleController({ config, toggle: toggleEl });
+      const report = controller.diagnose();
+
+      expect(report.bound.map((entry) => entry.key)).toEqual(['save']);
+      expect(report.free.map((entry) => entry.key)).toEqual(['free1']);
+      expect(report.missingConfig.map((entry) => entry.id)).toEqual(['ghost']);
+
+      controller.destroy();
+      quiet.forEach((spy) => spy.mockRestore());
+    });
+
+    it('exposes window.helpLayerDiagnose only with debug:true and retracts it on destroy', () => {
+      expect(window.helpLayerDiagnose).toBeUndefined();
+
+      const plain = createToggleController({ config, toggle: toggleEl });
+      expect(window.helpLayerDiagnose).toBeUndefined();
+      plain.destroy();
+
+      const dbg = createToggleController({ config, toggle: toggleEl, debug: true });
+      expect(typeof window.helpLayerDiagnose).toBe('function');
+
+      dbg.destroy();
+      expect(window.helpLayerDiagnose).toBeUndefined();
     });
   });
 });

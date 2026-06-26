@@ -1,0 +1,1 @@
+This .txt file mentions data-help-id="should-be-ignored" but must not be scanned by default.

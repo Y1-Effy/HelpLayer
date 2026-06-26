@@ -1,8 +1,8 @@
 /**
  * Pure geometry calculations. Takes no DOM elements, only numbers already read off.
  *
- * Clamping things that overflow the viewport is handled by Floating UI's shift()
- * middleware. toDocumentPosition is used for the virtual-element math of free placement, etc.
+ * Clamping things that overflow the viewport is handled by computePopupPosition's shift step
+ * below. toDocumentPosition is used for the virtual-element math of free placement, etc.
  */
 
 /**
@@ -18,8 +18,8 @@ export function toDocumentPosition(rect, scroll) {
 
 /**
  * Convert a document-coordinate rect into a viewport-coordinate rect by subtracting
- * the current scroll offset. This is what the getBoundingClientRect of a Floating UI
- * virtual reference element (a free-placement marker) returns.
+ * the current scroll offset. This is what the getBoundingClientRect of a virtual
+ * reference element (a free-placement marker) returns.
  * @param {{top:number,left:number,width?:number,height?:number}} docRect
  * @param {{x:number,y:number}} scroll
  */
@@ -54,7 +54,7 @@ export const MARKER_INSET = 12;
  * inward (overlapping the target edge); crossAxis nudges INSET inward from the aligned edge.
  * @param {{top:number,left:number,width:number,height:number}} refRect viewport rect of the target
  * @param {number} size marker width/height (square)
- * @param {string} placement Floating UI placement (default 'top-end')
+ * @param {string} placement a placement string (see Placement in types.js; default 'top-end')
  * @returns {{left:number, top:number}} viewport coordinates of the marker's top-left corner
  */
 export function markerViewportTopLeft(refRect, size, placement = 'top-end') {

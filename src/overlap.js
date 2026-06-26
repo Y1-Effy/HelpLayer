@@ -1,8 +1,8 @@
 /**
  * Overlap avoidance between markers (pure function).
  *
- * Takes an array of each marker's "base position" (the center coordinate Floating UI
- * decided on) and returns an array of extra offsets that push overlapping ones apart.
+ * Takes an array of each marker's "base position" (the center coordinate the positioning
+ * pass decided on) and returns an array of extra offsets that push overlapping ones apart.
  * Touches no DOM.
  *
  * The algorithm is a simple iterative push-out (a lightweight force-based separation):

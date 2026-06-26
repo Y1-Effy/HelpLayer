@@ -1,7 +1,7 @@
 /**
  * The single popup shared across the whole library.
- * Placed on its target (the clicked marker) with Floating UI; at screen edges, flip/shift avoid
- * clipping. While visible it follows via autoUpdate.
+ * Placed on its target (the clicked marker) via the positioning seam (anchorPopup in floating.js);
+ * at screen edges, flip/shift avoid clipping. While visible it follows the marker per animation frame.
  *
  * Accessibility:
  * - On open, move focus to the popup (role=dialog).

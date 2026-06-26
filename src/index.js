@@ -20,8 +20,8 @@ import { createToggleController } from './toggle.js';
  *   Return a Node to display it; if nothing is returned, fall back to safe text display (the title is always record.title).
  *   ⚠️ The return value is inserted as-is without sanitization. If it contains untrusted data, neutralize it on the caller side (XSS prevention)
  * @param {string} [options.markerLabel] - character shown on the marker (default '?')
- * @param {import('@floating-ui/dom').Placement} [options.markerPlacement] - corner to overlap the marker onto (default 'top-end')
- * @param {import('@floating-ui/dom').Placement} [options.popupPlacement] - initial popup placement (default 'bottom-start')
+ * @param {import('./types.js').Placement} [options.markerPlacement] - corner to overlap the marker onto (default 'top-end')
+ * @param {import('./types.js').Placement} [options.popupPlacement] - initial popup placement (default 'bottom-start')
  * @param {string} [options.nonce] - nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
  * @returns {{
  *   enable(): void,

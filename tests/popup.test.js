@@ -6,9 +6,10 @@ const anchorCleanup = jest.fn();
 const anchorPopup = jest.fn(() => ({ update: anchorUpdate, cleanup: anchorCleanup }));
 jest.unstable_mockModule('../src/floating.js', () => ({
   anchorPopup,
-  anchorMarker: jest.fn(() => jest.fn()),
   makeVirtualElement: jest.fn(),
   watchReference: jest.fn(() => jest.fn()),
+  isFixedReference: jest.fn(() => false),
+  isReferenceHidden: jest.fn(() => false),
 }));
 
 const { createPopupController } = await import('../src/popup.js');

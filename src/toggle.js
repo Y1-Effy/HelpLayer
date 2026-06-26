@@ -49,8 +49,8 @@ function resolveToggleElement(toggle) {
  * @param {(record: import('./matcher.js').HelpRecord) => (Node|null|undefined)} [options.render] render the popup body with your own Node
  *   (the return value is inserted as-is without sanitization, so untrusted data must be neutralized by the caller)
  * @param {string} [options.markerLabel] character shown on the marker (default '?')
- * @param {import('@floating-ui/dom').Placement} [options.markerPlacement] corner to overlap the marker onto (default 'top-end')
- * @param {import('@floating-ui/dom').Placement} [options.popupPlacement] initial popup placement (default 'bottom-start')
+ * @param {import('./types.js').Placement} [options.markerPlacement] corner to overlap the marker onto (default 'top-end')
+ * @param {import('./types.js').Placement} [options.popupPlacement] initial popup placement (default 'bottom-start')
  * @param {string} [options.nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
  */
 export function createToggleController(options) {

@@ -1,22 +1,25 @@
 /** @jest-environment jsdom */
 import { jest } from '@jest/globals';
 
-// Records every anchorMarker invocation (ref + its onHidden callback) so a test can drive the
-// visible -> hidden transition without the real Floating UI update loop.
-const anchorMarkerCalls = [];
+// markers.js positions in its own rAF loop and reads visibility via isReferenceHidden; we stub that
+// so a test can drive the visible -> hidden transition (then run a frame) without real DOM layout.
+const isReferenceHidden = jest.fn(() => false);
+const isFixedReference = jest.fn(() => false);
 
 // We don't need real DOM layout for placement, so mock floating.js.
 jest.unstable_mockModule('../src/floating.js', () => ({
-  anchorMarker: jest.fn((ref, el, onPlaced, placement, onHidden) => {
-    anchorMarkerCalls.push({ ref, onHidden });
-    return jest.fn();
-  }),
+  isReferenceHidden,
+  isFixedReference,
   anchorPopup: jest.fn(() => ({ update: jest.fn(), cleanup: jest.fn() })),
   makeVirtualElement: jest.fn((getRect) => ({ getBoundingClientRect: getRect })),
   watchReference: jest.fn(() => jest.fn()),
 }));
 
 const { createToggleController } = await import('../src/toggle.js');
+
+// Captured marker-loop frames; runFrame() runs the queued ones (snapshot, so re-scheduled frames wait).
+const rafCallbacks = [];
+const runFrame = () => rafCallbacks.splice(0).forEach((cb) => cb());
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -28,9 +31,16 @@ const config = {
 let toggleEl;
 
 beforeEach(() => {
-  anchorMarkerCalls.length = 0;
-  // Don't actually fire markers' overlap-avoidance rAF (just return an id).
-  global.requestAnimationFrame = jest.fn(() => 1);
+  isReferenceHidden.mockReset();
+  isReferenceHidden.mockReturnValue(false);
+  isFixedReference.mockReset();
+  isFixedReference.mockReturnValue(false);
+  // Capture the marker loop's frames so a test can run one on demand (default: not auto-run).
+  rafCallbacks.length = 0;
+  global.requestAnimationFrame = (cb) => {
+    rafCallbacks.push(cb);
+    return rafCallbacks.length;
+  };
   global.cancelAnimationFrame = jest.fn();
 
   document.body.innerHTML = '';
@@ -69,12 +79,12 @@ describe('createToggleController', () => {
     const popupEl = document.querySelector('.help-layer-popup');
     expect(popupEl.style.display).toBe('block');
 
-    // Drive the save marker's visible -> hidden transition (anchorMarker's onHidden callback).
-    const saveCall = anchorMarkerCalls.find(
-      (c) => c.ref instanceof HTMLElement && c.ref.getAttribute('data-help-id') === 'save',
+    // Drive the save marker's visible -> hidden transition: report its target hidden, then run a frame
+    // so the marker loop detects the edge and fires onMarkerHidden (which closes the open popup).
+    isReferenceHidden.mockImplementation(
+      (ref) => ref instanceof HTMLElement && ref.getAttribute('data-help-id') === 'save',
     );
-    expect(saveCall).toBeTruthy();
-    saveCall.onHidden();
+    runFrame();
 
     expect(popupEl.style.display).toBe('none');
 

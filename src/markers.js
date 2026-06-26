@@ -1,20 +1,32 @@
 /**
  * Marker manager.
  * Markers can be dynamically mounted/unmounted per help record (SPA dynamic-element support).
- * Each marker keeps following its target (an element, or the virtual element of a free placement)
- * via Floating UI's autoUpdate. On every finalized placement it triggers the overlap-avoidance pass,
- * debounced with rAF.
+ *
+ * Positioning runs in ONE shared requestAnimationFrame loop owned by the manager (not one Floating UI
+ * autoUpdate per marker). Each frame the loop:
+ *   1. reads every visible marker's reference rect (and the shared offsetParent geometry) once,
+ *   2. computes each marker's corner-overlap position synchronously (markers only need an offset,
+ *      never flip/shift — those are popup-only), runs overlap avoidance on the centers, and
+ *   3. writes left/top in a single batched pass.
+ * Folding tracking + overlap into one read-then-write loop avoids the layout thrashing and the
+ * doubled rect reads of running N independent animation-frame loops, which is what made large marker
+ * counts expensive. Smoothness is unchanged: writes still happen every frame before paint.
  *
  * Marker identifier (id):
  * - element-bound: the target element itself (distinguishes multiple elements with the same data-help-id)
  * - free placement: the config key string
  */
 import { createMarker } from './dom-builder.js';
-import { anchorMarker, makeVirtualElement } from './floating.js';
+import { isFixedReference, isReferenceHidden, makeVirtualElement } from './floating.js';
+import { markerViewportTopLeft, viewportToAbsolute } from './geometry.js';
 import { resolveOverlaps } from './overlap.js';
 
 // Temporary class added to the target element only while the marker is hovered/focused (matches the style.js definition).
 const TARGET_HIGHLIGHT_CLASS = 'help-layer-target-highlight';
+
+// Fallback marker size if the real size can't be measured yet (matches the CSS default). Used only
+// until a laid-out marker reports a non-zero offsetWidth, which is then cached.
+const DEFAULT_MARKER_SIZE = 24;
 
 /** @param {import('./matcher.js').HelpRecord} record */
 function referenceFor(record) {
@@ -33,11 +45,11 @@ function referenceFor(record) {
  * @param {object} state teardown registry
  * @param {object} options
  * @param {(record: import('./matcher.js').HelpRecord, markerEl: HTMLElement) => void} options.onMarkerClick
- * @param {() => void} [options.onOverlapResolved]
+ * @param {() => void} [options.onOverlapResolved] called once per frame in which any marker actually moved
  * @param {(record: import('./matcher.js').HelpRecord) => void} [options.onMarkerHidden] called when a
  *   marker's target transitions to hidden (e.g. display:none) — lets the caller close a popup open on it
  * @param {string} [options.markerLabel] character shown on the marker (default '?')
- * @param {import('@floating-ui/dom').Placement} [options.markerPlacement] corner to overlap (default 'top-end')
+ * @param {import('./types.js').Placement} [options.markerPlacement] corner to overlap (default 'top-end')
  */
 export function createMarkerManager(state, {
   onMarkerClick,
@@ -46,57 +58,142 @@ export function createMarkerManager(state, {
   markerLabel = '?',
   markerPlacement = 'top-end',
 }) {
-  /** @type {Map<Element|string, {record:import('./matcher.js').HelpRecord, el:HTMLElement, cleanup:() => void}>} */
+  /**
+   * @typedef {object} MarkerEntry
+   * @property {import('./matcher.js').HelpRecord} record
+   * @property {HTMLElement} el
+   * @property {Element|object} reference positioning reference (element or virtual element)
+   * @property {'fixed'|'absolute'} strategy positioning strategy chosen from the reference
+   * @property {import('./types.js').Placement} placement corner to overlap onto
+   * @property {() => void} cleanup
+   * @property {boolean} hidden whether the target is currently reported hidden (edge tracking for onMarkerHidden)
+   * @property {DOMRect=} refRect the reference rect read during the current frame's read phase
+   * @property {{left:number,top:number}|null} lastBaseEl previous frame's pre-overlap position (element space) — movement detection
+   * @property {number|undefined} lastLeft last written left (px), to skip redundant DOM writes
+   * @property {number|undefined} lastTop last written top (px)
+   */
+  /** @type {Map<Element|string, MarkerEntry>} */
   const markers = new Map();
   let rafId = null;
   // Don't schedule a new rAF during teardown (prevents a frame lingering after teardown).
   let tornDown = false;
+  // Cached marker size (square). Measured once from a laid-out marker; 0 until then.
+  let markerSize = 0;
+  // Visible-marker count from the previous frame, to detect membership changes (a marker entering or
+  // leaving the visible set means overlap must be recomputed even if no surviving marker's base moved).
+  let prevVisibleCount = -1;
 
-  function runOverlapPass() {
-    rafId = null;
-    // Exclude hidden markers (floating.js sets inline display:none when a target goes display:none):
-    // such a marker measures 0x0 at the origin, so leaving it in would make it count toward the
-    // "<=1, skip" check and push visible markers away from (0,0).
-    const entries = [...markers.values()].filter((e) => e.el.style.display !== 'none');
-    // With one marker or fewer, overlap is impossible. Skip getBoundingClientRect (forced reflow)
-    // and the O(n^2) push-out math entirely (avoids a per-frame reflow while scrolling on screens
-    // with few targets). However, right after dropping from 2 to 1, if the remaining one still has
-    // a leftover push-out transform, clear it and let an open popup follow that move (in steady
-    // state, with an empty transform, do nothing).
-    if (entries.length <= 1) {
-      const el = entries.length === 1 ? entries[0].el : null;
-      if (el && el.style.transform) {
-        el.style.transform = '';
-        if (onOverlapResolved) {
-          onOverlapResolved();
-        }
-      }
+  // One positioning pass: read references + offsetParent once, compute corner placements + overlap,
+  // then write left/top in a batch. Pure of scheduling so it can run either synchronously (initial
+  // placement, to avoid a one-frame flash at 0,0) or from the continuous rAF loop (tracking).
+  function positionAll() {
+    if (tornDown || markers.size === 0) {
       return;
     }
 
-    // Clear the accumulated transform to measure base centers, then reapply after resolving overlaps.
-    entries.forEach((e) => { e.el.style.transform = ''; });
-    const centers = entries.map((e) => {
-      const r = e.el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    });
-    const offsets = resolveOverlaps(centers);
-    entries.forEach((e, i) => {
-      const { dx, dy } = offsets[i];
-      e.el.style.transform = (dx || dy) ? `translate(${dx}px, ${dy}px)` : '';
-    });
+    // --- Read phase: visibility edges + reference rects, plus the shared offsetParent geometry. ---
+    const bodyRect = document.body.getBoundingClientRect();
+    const bodyClientLeft = document.body.clientLeft;
+    const bodyClientTop = document.body.clientTop;
 
-    // Marker positions moved, so give an open popup etc. the chance to follow.
-    if (onOverlapResolved) {
-      onOverlapResolved();
+    /** @type {MarkerEntry[]} */
+    const visible = [];
+    for (const entry of markers.values()) {
+      if (isReferenceHidden(entry.reference)) {
+        // Target went hidden (e.g. display:none). Hide the marker too instead of leaving it stranded
+        // (a display:none target measures 0x0, which would otherwise fling the marker to 0,0). Inline
+        // !important beats the stylesheet's `display:block !important`. Fire onMarkerHidden only on the
+        // visible -> hidden edge (e.g. to close a popup open on this marker).
+        if (!entry.hidden) {
+          entry.hidden = true;
+          entry.lastBaseEl = null; // force a fresh placement when it reshows
+          entry.el.style.setProperty('display', 'none', 'important');
+          if (onMarkerHidden) {
+            onMarkerHidden(entry.record);
+          }
+        }
+        continue;
+      }
+      if (entry.hidden) {
+        entry.hidden = false;
+        entry.el.style.removeProperty('display'); // back to the stylesheet's display:block
+      }
+      entry.refRect = entry.reference.getBoundingClientRect();
+      visible.push(entry);
+    }
+
+    // Cache the marker size once a real measurement is available (custom --help-layer-marker-size honored).
+    if (!markerSize && visible.length) {
+      const measured = visible[0].el.offsetWidth;
+      if (measured > 0) {
+        markerSize = measured;
+      }
+    }
+    const size = markerSize || DEFAULT_MARKER_SIZE;
+
+    // --- Compute phase (no DOM): base positions, movement/membership detection, overlap offsets. ---
+    let dirty = visible.length !== prevVisibleCount;
+    prevVisibleCount = visible.length;
+    /** @type {{left:number,top:number}[]} */
+    const bases = [];
+    /** @type {{x:number,y:number}[]} */
+    const centers = [];
+    for (const entry of visible) {
+      const bv = markerViewportTopLeft(entry.refRect, size, entry.placement);
+      centers.push({ x: bv.left + size / 2, y: bv.top + size / 2 });
+      // Convert the viewport position to what we actually write. For absolute markers this is
+      // scroll-invariant (refRect and bodyRect both shift with scroll), so plain page scroll produces
+      // no write — the marker rides the document for free. A write happens only when the target really
+      // moves relative to the document (layout, resize, animation).
+      const be = entry.strategy === 'fixed'
+        ? { left: bv.left, top: bv.top }
+        : viewportToAbsolute(bv.left, bv.top, bodyRect, bodyClientLeft, bodyClientTop);
+      bases.push(be);
+      if (!entry.lastBaseEl || entry.lastBaseEl.left !== be.left || entry.lastBaseEl.top !== be.top) {
+        dirty = true;
+      }
+      entry.lastBaseEl = be;
+    }
+
+    // --- Write phase: only when something changed, and only the markers whose position differs. ---
+    if (dirty && visible.length) {
+      const offsets = resolveOverlaps(centers);
+      let moved = false;
+      for (let i = 0; i < visible.length; i++) {
+        const entry = visible[i];
+        const left = bases[i].left + offsets[i].dx;
+        const top = bases[i].top + offsets[i].dy;
+        if (entry.lastLeft !== left || entry.lastTop !== top) {
+          entry.el.style.left = `${left}px`;
+          entry.el.style.top = `${top}px`;
+          entry.lastLeft = left;
+          entry.lastTop = top;
+          moved = true;
+        }
+      }
+      // Marker positions moved, so give an open popup etc. the chance to follow.
+      if (moved && onOverlapResolved) {
+        onOverlapResolved();
+      }
     }
   }
 
-  function scheduleOverlapPass() {
-    if (rafId !== null || tornDown) {
+  // Continuous tracking: position every frame, then re-schedule. Stops re-scheduling once there are no
+  // markers left (or after teardown); ensureLoop() restarts it on the next mount.
+  function frameTick() {
+    rafId = null;
+    if (tornDown || markers.size === 0) {
       return;
     }
-    rafId = requestAnimationFrame(runOverlapPass);
+    positionAll();
+    rafId = requestAnimationFrame(frameTick);
+  }
+
+  function ensureLoop() {
+    if (rafId !== null || tornDown || markers.size === 0) {
+      return;
+    }
+    rafId = requestAnimationFrame(frameTick);
   }
 
   /** @param {import('./matcher.js').HelpRecord} record */
@@ -111,13 +208,14 @@ export function createMarkerManager(state, {
     const handleClick = () => onMarkerClick(record, el);
     el.addEventListener('click', handleClick);
 
-    const cleanupAnchor = anchorMarker(
-      referenceFor(record),
-      el,
-      scheduleOverlapPass,
-      markerPlacement,
-      () => onMarkerHidden && onMarkerHidden(record),
-    );
+    const reference = referenceFor(record);
+    // Match the strategy to the reference: a fixed reference needs a fixed marker, or it scrolls with
+    // the document while the fixed target stays put and visibly drifts (see isFixedReference). Inline
+    // !important beats the stylesheet's `position: absolute !important`.
+    const strategy = isFixedReference(reference) ? 'fixed' : 'absolute';
+    if (strategy === 'fixed') {
+      el.style.setProperty('position', 'fixed', 'important');
+    }
 
     // Target-element highlight (element-bound only; free placement has no target, so skip).
     // Show an outline on the target only while the marker is hovered/focused, to make clear "which element this explains".
@@ -137,7 +235,6 @@ export function createMarkerManager(state, {
         return;
       }
       done = true;
-      cleanupAnchor();
       el.removeEventListener('click', handleClick);
       if (target) {
         el.removeEventListener('mouseenter', addHighlight);
@@ -148,10 +245,22 @@ export function createMarkerManager(state, {
       }
       el.remove();
       markers.delete(record.id);
-      scheduleOverlapPass();
+      ensureLoop(); // keep the loop alive so the next frame re-packs the remaining markers
     };
 
-    markers.set(record.id, { record, el, cleanup });
+    markers.set(record.id, {
+      record,
+      el,
+      reference,
+      strategy,
+      placement: markerPlacement,
+      cleanup,
+      hidden: false,
+      lastBaseEl: null,
+      lastLeft: undefined,
+      lastTop: undefined,
+    });
+    ensureLoop();
   }
 
   function unmount(id) {
@@ -163,6 +272,10 @@ export function createMarkerManager(state, {
 
   function mountAll(records) {
     records.forEach(mount);
+    // Place the whole batch synchronously (before paint) so markers don't flash at (0,0) for a frame
+    // on enable; the rAF loop started by mount() then takes over tracking. Done once per batch (not
+    // per mount) to keep this O(n), not O(n^2).
+    positionAll();
   }
 
   // Register a single teardown for the whole manager with state

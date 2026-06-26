@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HelpLayer — marker stress test</title>
+<!--
+  Performance stress page (not part of the product demo). Renders a large grid of targets so you can
+  watch the per-frame marker-tracking cost as the count grows, with an auto-scroll that forces every
+  visible marker to re-track each frame. Use the frame-time meter to compare builds (e.g. git stash).
+  The library has no runtime dependencies, so it imports ../src directly with no import map.
+-->
+<style>
+  body { font-family: sans-serif; margin: 0; color: #1f2933; }
+  .stress-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    padding: 10px 14px; background: #0f172a; color: #fff;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  }
+  .stress-bar label { display: inline-flex; gap: 6px; align-items: center; }
+  .stress-bar button, .stress-bar select {
+    font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid #475569;
+    background: #1e293b; color: #fff; cursor: pointer;
+  }
+  .stress-meter { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .stress-meter strong { font-size: 18px; }
+  main { padding: 70px 16px 40px; }
+  .stress-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 28px 24px;
+  }
+  .stress-cell {
+    border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 8px; text-align: center;
+    background: #f8fafc; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="stress-bar">
+  <button id="help-layer-toggle" type="button">Help mode</button>
+  <label>Markers
+    <select id="stress-count">
+      <option value="100">100</option>
+      <option value="300" selected>300</option>
+      <option value="600">600</option>
+      <option value="1000">1000</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="stress-autoscroll"> Auto-scroll</label>
+  <a href="./" style="color:#93c5fd;">← demo</a>
+  <div class="stress-meter">
+    frame <strong id="stress-ms">–</strong> ms · <strong id="stress-fps">–</strong> fps
+  </div>
+</div>
+
+<main>
+  <div id="stress-grid" class="stress-grid" aria-label="Stress targets"></div>
+</main>
+
+<script type="module">
+import { initHelpLayer } from '../src/index.js';
+
+const grid = document.getElementById('stress-grid');
+const countSelect = document.getElementById('stress-count');
+const autoscroll = document.getElementById('stress-autoscroll');
+const msEl = document.getElementById('stress-ms');
+const fpsEl = document.getElementById('stress-fps');
+
+let help = null;
+
+// (Re)build the grid of N targets and a fresh help layer over them. Each cell carries its own
+// data-help-* so no central config is needed (matcher.js falls back to the data attributes).
+function rebuild(n) {
+  if (help) {
+    help.destroy();
+    help = null;
+  }
+  grid.replaceChildren();
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'stress-cell';
+    cell.setAttribute('data-help-id', `s${i}`);
+    cell.setAttribute('data-help-title', `Field ${i}`);
+    cell.setAttribute('data-help-text', `This is the explanation for field ${i}.`);
+    cell.textContent = `Field ${i}`;
+    frag.appendChild(cell);
+  }
+  grid.appendChild(frag);
+  // Empty config: every target is described inline via its data-help-* attributes (matcher.js fallback).
+  help = initHelpLayer({ toggle: '#help-layer-toggle', config: {} });
+}
+
+countSelect.addEventListener('change', () => rebuild(Number(countSelect.value)));
+
+// Frame-time meter: moving average over the last 60 rAF deltas. Text is updated ~6x/sec so the
+// measurement itself stays cheap and doesn't skew the numbers it reports.
+const samples = [];
+let last = performance.now();
+let lastPaint = 0;
+function meter(now) {
+  const delta = now - last;
+  last = now;
+  samples.push(delta);
+  if (samples.length > 60) {
+    samples.shift();
+  }
+  if (autoscroll.checked) {
+    // Loop the scroll so markers keep re-tracking every frame (the expensive path).
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo(0, max > 0 && window.scrollY >= max ? 0 : window.scrollY + 6);
+  }
+  if (now - lastPaint > 160) {
+    lastPaint = now;
+    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+    msEl.textContent = avg.toFixed(1);
+    fpsEl.textContent = (1000 / avg).toFixed(0);
+  }
+  requestAnimationFrame(meter);
+}
+requestAnimationFrame(meter);
+
+rebuild(Number(countSelect.value));
+</script>
+</body>
+</html>

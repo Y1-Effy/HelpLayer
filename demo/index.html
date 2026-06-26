@@ -6,21 +6,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%230f6bff'/><text x='16' y='23' font-size='22' text-anchor='middle' font-family='sans-serif' fill='white'>?</text></svg>">
 <title>HelpLayer Demo</title>
 <link rel="stylesheet" href="demo.css">
-<!--
-  Browsers can't resolve bare imports (e.g. '@floating-ui/dom') on their own, so an import map
-  points them at the local ESM files inside node_modules. Everything runs fully locally (no external
-  requests / no CDN).
--->
-<script type="importmap">
-{
-  "imports": {
-    "@floating-ui/dom": "/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
-    "@floating-ui/core": "/node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
-    "@floating-ui/utils": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
-    "@floating-ui/utils/dom": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs"
-  }
-}
-</script>
+<!-- The library has no runtime dependencies, so the demo imports ../src directly with no import map. -->
 </head>
 <body>
 <button id="help-layer-toggle" class="demo-toggle" type="button">Help mode</button>

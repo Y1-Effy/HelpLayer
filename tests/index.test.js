@@ -5,10 +5,11 @@ import { jest } from '@jest/globals';
 // need real Floating UI layout here, so mock floating.js (same convention as the other DOM tests),
 // then dynamically import the public entry point.
 jest.unstable_mockModule('../src/floating.js', () => ({
-  anchorMarker: jest.fn(() => jest.fn()),
   anchorPopup: jest.fn(() => ({ update: jest.fn(), cleanup: jest.fn() })),
   makeVirtualElement: jest.fn((getRect) => ({ getBoundingClientRect: getRect })),
   watchReference: jest.fn(() => jest.fn()),
+  isFixedReference: jest.fn(() => false),
+  isReferenceHidden: jest.fn(() => false),
 }));
 
 const { initHelpLayer } = await import('../src/index.js');

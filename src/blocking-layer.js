@@ -8,7 +8,7 @@
  *    rectangle (the hole). Inside the hole the layer isn't painted and hit-testing passes through,
  *    so the toggle can be clicked natively without touching z-index at all. Unlike approaches that
  *    shuffle z-index, this doesn't break depending on ancestor stacking contexts.
- *    The hole is updated via autoUpdate to follow the toggle's scroll/resize.
+ *    The hole is updated via watchReference (a per-frame rAF tracker) to follow the toggle's scroll/resize.
  *
  * 2. Focus containment:
  *    On ON, blur activeElement, and via focusin (capture) detect focus moving to anything other

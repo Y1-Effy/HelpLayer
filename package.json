@@ -43,6 +43,7 @@
     "demo": "npm run build:demos && node scripts/serve.js"
   },
   "devDependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "@playwright/test": "^1.61.0",
     "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
@@ -78,8 +79,5 @@
   "homepage": "https://github.com/Y1-Effy/HelpLayer#readme",
   "bugs": {
     "url": "https://github.com/Y1-Effy/HelpLayer/issues"
-  },
-  "dependencies": {
-    "@floating-ui/dom": "^1.7.6"
   }
 }

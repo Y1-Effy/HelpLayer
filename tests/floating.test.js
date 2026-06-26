@@ -1,13 +1,12 @@
 /** @jest-environment jsdom */
 
 /**
- * Unit tests for isFixedReference — the helper that decides whether a marker/popup must use Floating
- * UI's `fixed` strategy (so it doesn't jitter while scrolling) instead of the default `absolute`.
- *
- * Only this pure helper is exercised here; the rest of floating.js calls Floating UI's autoUpdate /
- * computePosition, which need layout APIs jsdom lacks, so the DOM-layer tests mock floating.js whole.
+ * Unit tests for the backend-agnostic reference helpers exposed through the floating.js seam:
+ * isFixedReference (fixed vs absolute strategy), isReferenceHidden (target hidden detection), and
+ * makeVirtualElement (free-placement virtual reference). The positioning/tracking functions
+ * (anchorPopup / watchReference) are covered in floating.self.test.js.
  */
-import { isFixedReference, isReferenceHidden } from '../src/floating.js';
+import { isFixedReference, isReferenceHidden, makeVirtualElement } from '../src/floating.js';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -91,5 +90,23 @@ describe('isReferenceHidden', () => {
   test('returns false for null/undefined', () => {
     expect(isReferenceHidden(null)).toBe(false);
     expect(isReferenceHidden(undefined)).toBe(false);
+  });
+});
+
+describe('makeVirtualElement', () => {
+  test('anchors to document.body and converts doc coords to viewport coords by scroll', () => {
+    // Drive a non-zero scroll so the doc -> viewport subtraction is actually exercised.
+    Object.defineProperty(window, 'scrollX', { value: 20, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 300, configurable: true });
+
+    const virtual = makeVirtualElement(() => ({ top: 400, left: 70, width: 0, height: 0 }));
+    expect(virtual.contextElement).toBe(document.body);
+
+    const rect = virtual.getBoundingClientRect();
+    // 70 - 20 = 50 ; 400 - 300 = 100
+    expect(rect).toMatchObject({ left: 50, top: 100, right: 50, bottom: 100, width: 0, height: 0 });
+
+    Object.defineProperty(window, 'scrollX', { value: 0, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   });
 });

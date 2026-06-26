@@ -3,11 +3,10 @@
  * It wipes the whole dist/ before generating, so leftovers from past builds (old files from
  * before a rename, type definitions of deleted modules, etc.) don't sneak in.
  *
- * The dependency @floating-ui/dom is handled differently per distribution form:
- * - help-layer.esm.js  : ESM. @floating-ui/dom is external (not bundled). Users via npm/a bundler
- *                       resolve it as a dependency from their own node_modules.
- * - help-layer.iife.js : IIFE. To be self-contained in a single <script>, @floating-ui/dom is bundled.
- *                       Loading it exposes a global `HelpLayer` (`HelpLayer.initHelpLayer({ ... })`).
+ * The library has no runtime dependencies, so both forms are fully self-contained (nothing external):
+ * - help-layer.esm.js  : ESM, for npm/bundler consumers.
+ * - help-layer.iife.js : IIFE for a single <script>. Loading it exposes a global `HelpLayer`
+ *                       (`HelpLayer.initHelpLayer({ ... })`).
  *
  * Type definitions (.d.ts) are emitted separately to dist/types by `npm run build:types` (tsc).
  * This script runs first in the build chain (build:bundle), so wiping dist/ here means everything
@@ -31,7 +30,7 @@ const shared = {
 };
 
 await Promise.all([
-  build({ ...shared, format: 'esm', external: ['@floating-ui/dom'], outfile: 'dist/help-layer.esm.js' }),
+  build({ ...shared, format: 'esm', outfile: 'dist/help-layer.esm.js' }),
   build({ ...shared, format: 'iife', globalName: 'HelpLayer', outfile: 'dist/help-layer.iife.js' }),
 ]);
 

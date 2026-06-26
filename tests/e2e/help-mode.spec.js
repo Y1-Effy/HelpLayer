@@ -102,6 +102,48 @@ test('clicking a marker does not scroll the page (preventScroll)', async({ page 
   expect(Math.abs(after - before)).toBeLessThan(2);
 });
 
+test('the popup flips above and stays within the viewport near the bottom edge', async({ page }) => {
+  // Guards positioning (offset + flip + shift): when a marker sits near the bottom of the viewport,
+  // the popup must flip above it and stay fully inside the viewport rather than clip off-screen.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  // Scroll to the very bottom of the page so the bottom-most marker is near the viewport's bottom edge
+  // (deterministic regardless of the demo's exact layout). Then pick that marker.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(80);
+  const marker = await page.evaluate(() => {
+    let best = null;
+    for (const m of document.querySelectorAll('.help-layer-marker')) {
+      const r = m.getBoundingClientRect();
+      const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      if (!best || c.y > best.y) {
+        best = c;
+      }
+    }
+    return best;
+  });
+  // Sanity: the chosen marker really is in the lower part of the viewport (so "below" would overflow).
+  const vh = await page.evaluate(() => window.innerHeight);
+  expect(marker.y).toBeGreaterThan(vh * 0.6);
+
+  await page.mouse.click(marker.x, marker.y);
+  await expect(page.locator(POPUP)).toBeVisible();
+
+  const box = await page.evaluate(() => {
+    const r = document.querySelector('.help-layer-popup').getBoundingClientRect();
+    return { top: r.top, left: r.left, right: r.right, bottom: r.bottom, vw: window.innerWidth, vh: window.innerHeight };
+  });
+
+  // Fully inside the viewport (allow 1px rounding slack).
+  expect(box.top).toBeGreaterThanOrEqual(-1);
+  expect(box.left).toBeGreaterThanOrEqual(-1);
+  expect(box.right).toBeLessThanOrEqual(box.vw + 1);
+  expect(box.bottom).toBeLessThanOrEqual(box.vh + 1);
+  // Flipped above the marker (its top is above the marker's center).
+  expect(box.top).toBeLessThan(marker.y);
+});
+
 test('the blocking layer shows the scrim and not-allowed cursor (demo config)', async({ page }) => {
   await page.click(TOGGLE);
   await expect(page.locator(MARKER).first()).toBeVisible();

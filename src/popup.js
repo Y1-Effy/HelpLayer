@@ -19,7 +19,7 @@ import { safeInvoke } from './safe.js';
  *   Escape hatch to render the body area with your own DOM node. Return a Node to display it;
  *   if nothing is returned, fall back to safe text rendering (textContent). The title is always record.title.
  *   Note: the return value is appendChild'd as-is without sanitization, so untrusted data must be neutralized by the caller.
- * @param {import('@floating-ui/dom').Placement} [options.popupPlacement] initial placement (default 'bottom-start')
+ * @param {import('./types.js').Placement} [options.popupPlacement] initial placement (default 'bottom-start')
  */
 export function createPopupController(state, { onClose, render, popupPlacement = 'bottom-start' } = {}) {
   const { root, titleEl, textEl, closeEl } = createPopup();
@@ -64,14 +64,14 @@ export function createPopupController(state, { onClose, render, popupPlacement =
     stopAnchor();
     anchor = anchorPopup(referenceEl, root, popupPlacement);
 
-    // preventScroll: the popup is positioned asynchronously (computePosition().then), so at this
-    // point it's still at its stale position; a default focus would scroll toward that, causing a
-    // visible jump. flip/shift keep it in the viewport, so suppressing the scroll is safe.
+    // preventScroll: anchorPopup positions the popup synchronously above, so it's already in place,
+    // but focusing it can still nudge an ancestor scroll container toward it; flip/shift keep it in
+    // the viewport, so suppressing that scroll is safe and avoids a visible jump.
     root.focus({ preventScroll: true });
   }
 
   // Reposition immediately, only when open.
-  // (Called e.g. right after a marker shifts due to the overlap-avoidance transform.)
+  // (Called e.g. right after a marker's left/top shifts from the overlap-avoidance pass.)
   function reposition() {
     if (anchor) {
       anchor.update();

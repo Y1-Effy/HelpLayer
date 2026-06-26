@@ -6,6 +6,7 @@
 import { isolateBackgroundFromAT } from './aria-isolation.js';
 import { activateBlockingLayer } from './blocking-layer.js';
 import { isPlainObject, normalizeConfig, validateConfig } from './config.js';
+import { buildRuntimeReport, formatRuntimeReport } from './diagnostics.js';
 import { createMarkerManager } from './markers.js';
 import {
   collectElementRecords,
@@ -19,6 +20,15 @@ import { createPopupController } from './popup.js';
 import { safeInvoke } from './safe.js';
 import { createState } from './state.js';
 import { injectStyles, removeStyles } from './style.js';
+
+// Every option initHelpLayer() understands. Used only to warn on a likely typo (e.g. markerLabal): an
+// unknown key is silently dropped by the destructuring below, so without this the mistake is invisible.
+// Keep in sync with the destructuring in createToggleController() and the HelpLayerOptions typedef in index.js.
+const KNOWN_OPTIONS = new Set([
+  'config', 'toggle', 'onEnable', 'onDisable', 'onOpen', 'onClose',
+  'silent', 'attribute', 'render', 'markerLabel', 'markerPlacement',
+  'popupPlacement', 'nonce', 'debug',
+]);
 
 function resolveToggleElement(toggle) {
   if (typeof toggle === 'string') {
@@ -38,13 +48,14 @@ function resolveToggleElement(toggle) {
 
 /**
  * @param {object} options
- * @param {object} options.config helpConfig
+ * @param {object} [options.config] helpConfig. Optional — if omitted, targets are defined purely via the
+ *   inline data-help-title / data-help-text attributes (config wins when both define the same key)
  * @param {string|HTMLElement} [options.toggle] DOM element that switches ON/OFF (if omitted, programmatic control only)
  * @param {() => void} [options.onEnable] called right after the mode is turned ON
  * @param {() => void} [options.onDisable] called right after the mode is turned OFF
  * @param {(record: import('./matcher.js').HelpRecord) => void} [options.onOpen] called when a popup is opened
  * @param {() => void} [options.onClose] called when a popup is closed
- * @param {boolean} [options.silent] suppress the warning log for unregistered keys
+ * @param {boolean} [options.silent] suppress non-fatal warning logs (unregistered keys, unknown options, duplicate-id open)
  * @param {string} [options.attribute] attribute name marking targets (default 'data-help-id')
  * @param {(record: import('./matcher.js').HelpRecord) => (Node|null|undefined)} [options.render] render the popup body with your own Node
  *   (the return value is inserted as-is without sanitization, so untrusted data must be neutralized by the caller)
@@ -52,6 +63,7 @@ function resolveToggleElement(toggle) {
  * @param {import('./types.js').Placement} [options.markerPlacement] corner to overlap the marker onto (default 'top-end')
  * @param {import('./types.js').Placement} [options.popupPlacement] initial popup placement (default 'bottom-start')
  * @param {string} [options.nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
+ * @param {boolean} [options.debug] also expose diagnose() as window.helpLayerDiagnose for the devtools console
  */
 export function createToggleController(options) {
   // Validate before destructuring so initHelpLayer() / initHelpLayer(null) get a clear message
@@ -60,7 +72,7 @@ export function createToggleController(options) {
     throw new Error('help-layer: initHelpLayer requires an options object');
   }
   const {
-    config,
+    config = {},
     toggle,
     onEnable,
     onDisable,
@@ -73,7 +85,17 @@ export function createToggleController(options) {
     markerPlacement = 'top-end',
     popupPlacement = 'bottom-start',
     nonce,
+    debug = false,
   } = options;
+
+  // Catch a mistyped option (it would otherwise be dropped by the destructuring above with no signal).
+  if (!silent) {
+    for (const key of Object.keys(options)) {
+      if (!KNOWN_OPTIONS.has(key)) {
+        console.warn(`[help-layer] unknown option "${key}" (ignored). Check for a typo.`);
+      }
+    }
+  }
 
   let activeConfig = config;
   validateConfig(activeConfig);
@@ -224,13 +246,22 @@ export function createToggleController(options) {
     if (!markers || !popup) {
       return;
     }
-    const entry = markers.findByKey(key);
-    if (!entry) {
+    const entries = markers.markersForKey(key);
+    if (entries.length === 0) {
       if (!silent) {
         console.warn(`[help-layer] open(): no help marker for key "${key}"`);
       }
       return;
     }
+    // Several elements can share the same data-help-id (each gets its own marker). open() can only show
+    // one popup, so it opens the first (mount order). Make that choice explicit instead of silent.
+    if (entries.length > 1 && !silent) {
+      console.warn(
+        `[help-layer] open("${key}"): ${entries.length} elements share ${attribute}="${key}"; opening the first. ` +
+        'Give each a unique id (or use a free-placement key) to target a specific one.',
+      );
+    }
+    const entry = entries[0];
     popup.open(entry.record, entry.el);
     safeInvoke('onOpen', onOpen, entry.record);
   }
@@ -252,8 +283,24 @@ export function createToggleController(options) {
     }
   }
 
+  // Developer aid: scan the live DOM and report how the current config maps onto it (logs + returns).
+  // Reads activeConfig via closure so it reflects update(), and works whether the mode is ON or OFF.
+  function diagnose() {
+    const report = buildRuntimeReport(activeConfig, { attribute });
+    formatRuntimeReport(report);
+    return report;
+  }
+
   if (toggleEl) {
     toggleEl.addEventListener('click', toggleMode);
+  }
+
+  // With debug:true, expose diagnose() on window so it can be called straight from the devtools
+  // console without holding the controller reference. Cast to a loose type since this is an ad-hoc
+  // global not declared on the Window interface.
+  const globalScope = typeof window !== 'undefined' ? /** @type {any} */ (window) : null;
+  if (debug && globalScope) {
+    globalScope.helpLayerDiagnose = diagnose;
   }
 
   return {
@@ -266,10 +313,15 @@ export function createToggleController(options) {
     open: openByKey,
     close: closePopup,
     update,
+    diagnose,
     destroy() {
       disable();
       if (toggleEl) {
         toggleEl.removeEventListener('click', toggleMode);
+      }
+      // Only retract the global we installed — never clobber another instance's handler.
+      if (debug && globalScope && globalScope.helpLayerDiagnose === diagnose) {
+        delete globalScope.helpLayerDiagnose;
       }
     },
   };

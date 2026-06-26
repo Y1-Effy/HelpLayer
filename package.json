@@ -10,6 +10,9 @@
   "module": "dist/help-layer.esm.js",
   "unpkg": "dist/help-layer.iife.js",
   "types": "dist/types/index.d.ts",
+  "bin": {
+    "help-layer": "bin/help-layer.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
@@ -19,7 +22,8 @@
   },
   "files": [
     "src",
-    "dist"
+    "dist",
+    "bin"
   ],
   "directories": {
     "doc": "doc"
@@ -33,6 +37,7 @@
     "lint:fix": "eslint src tests --fix",
     "typecheck": "tsc -p jsconfig.json",
     "check": "npm run lint && npm run typecheck && npm test",
+    "check:config": "node bin/help-layer.js check --config demo/helpConfig.js --export buildHelpConfig --src demo/index.html,demo/demo-app.js",
     "build:site": "node demo/build-site.js",
     "build:demos": "node demo/build-framework-demos.js",
     "build:bundle": "node scripts/build.js",

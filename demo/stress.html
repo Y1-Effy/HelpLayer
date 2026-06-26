@@ -88,8 +88,8 @@ function rebuild(n) {
     frag.appendChild(cell);
   }
   grid.appendChild(frag);
-  // Empty config: every target is described inline via its data-help-* attributes (matcher.js fallback).
-  help = initHelpLayer({ toggle: '#help-layer-toggle', config: {} });
+  // No config: every target is described inline via its data-help-* attributes (matcher.js fallback).
+  help = initHelpLayer({ toggle: '#help-layer-toggle' });
 }
 
 countSelect.addEventListener('change', () => rebuild(Number(countSelect.value)));

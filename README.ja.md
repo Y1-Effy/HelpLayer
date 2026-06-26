@@ -24,9 +24,9 @@
 ## 目次
 
 - [なぜ HelpLayer か（既存手段との違い）](#なぜ-helplayer-か既存手段との違い)
-- [こんなときに（導入が刺さるケース）](#こんなときに導入が刺さるケース)
 - [インストール](#インストール)
 - [クイックスタート](#クイックスタート)
+- [こんなときに（導入が刺さるケース）](#こんなときに導入が刺さるケース)
 - [自由配置（要素に紐づけない説明）](#自由配置要素に紐づけない説明)
 - [API](#api)
 - [API の上に作るレシピ（分析・ディープリンク・検索・フレームワーク連携）](./RECIPES.ja.md)
@@ -69,6 +69,72 @@
 > とはいえ、これらのいくつか（分析・ディープリンク・検索パネル・フレームワーク連携）は、公開 API の
 > *上に* 数行で作れます。レシピは **[RECIPES.ja.md](./RECIPES.ja.md)** を参照してください。
 
+## インストール
+
+```sh
+npm install help-layer
+```
+
+バンドラを使わず `<script>` 1本で導入したい場合は、プリビルドの IIFE を読み込めばグローバル `HelpLayer` が生えます（後述）。
+
+TypeScript の型定義を同梱しています（`package.json` の `types` が `dist/types` を指す）。TS プロジェクトでは追加設定なしで型補完が効きます。公開型は import 可能です（例: `import type { HelpLayerOptions, HelpLayerController, HelpConfig, HelpRecord, Placement } from 'help-layer'`）。
+
+## クイックスタート
+
+### 1. config オブジェクトで定義する
+
+対象要素に `data-help-id` を付け、その値をキーにした説明を渡します。
+
+```html
+<button data-help-id="save">保存</button>
+<button id="help-toggle">解説モード</button>
+```
+
+```js
+import { initHelpLayer } from 'help-layer';
+
+initHelpLayer({
+  toggle: '#help-toggle',
+  config: {
+    save: { title: '保存', text: '入力内容を保存します。' },
+  },
+});
+```
+
+### 2. マークアップに直接書く（`config` 不要）
+
+説明をマークアップと同居させたい場合は、`data-help-title` / `data-help-text` を要素に直接書くだけで対象になります。
+`config` と併用でき、**同じキーが config にあれば config が優先**されます。
+
+```html
+<button data-help-title="保存" data-help-text="入力内容を保存します。">保存</button>
+```
+
+```js
+initHelpLayer({ toggle: '#help-toggle' });
+```
+
+### `<script>` だけで使う（バンドラなし）
+
+CDN から読む場合は、改ざん検知のため **バージョンを固定** し、**SRI（`integrity`）** を付けることを推奨します。
+
+```html
+<script
+  src="https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js"
+  integrity="sha384-……（公開版のハッシュに差し替え）"
+  crossorigin="anonymous"></script>
+<script>
+  HelpLayer.initHelpLayer({
+    toggle: '#help-toggle',
+    config: { save: { title: '保存', text: '入力内容を保存します。' } },
+  });
+</script>
+```
+
+> `integrity` のハッシュは公開した実ファイルから生成します。例:
+> `curl -s https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> （バージョンを固定しないと SRI と不整合になり読み込みが拒否されます。）
+
 ## こんなときに（導入が刺さるケース）
 
 - **DAP／ガイド系 SaaS のコストが見合わず、解約を検討している。でも解約すると画面内ヘルプがゼロに戻る。**
@@ -94,72 +160,6 @@
 > いるため、Web アプリとまったく同じ感覚で HelpLayer を後付けできます。ネイティブ風の画面に「解説モード」を
 > 足したいときの選択肢としても、意外と素直にハマります。
 
-## インストール
-
-```sh
-npm install help-layer
-```
-
-バンドラを使わず `<script>` 1本で導入したい場合は、プリビルドの IIFE を読み込めばグローバル `HelpLayer` が生えます（後述）。
-
-TypeScript の型定義を同梱しています（`package.json` の `types` が `dist/types` を指す）。TS プロジェクトでは追加設定なしで型補完が効きます。
-
-## クイックスタート
-
-### 1. config オブジェクトで定義する
-
-対象要素に `data-help-id` を付け、その値をキーにした説明を渡します。
-
-```html
-<button data-help-id="save">保存</button>
-<button id="help-toggle">解説モード</button>
-```
-
-```js
-import { initHelpLayer } from 'help-layer';
-
-initHelpLayer({
-  toggle: '#help-toggle',
-  config: {
-    save: { title: '保存', text: '入力内容を保存します。' },
-  },
-});
-```
-
-### 2. マークアップに直接書く（説明の config 定義なしでも可。`config: {}` 自体は必要）
-
-説明をマークアップと同居させたい場合は、`data-help-title` / `data-help-text` を要素に直接書くだけで対象になります。
-`config` と併用でき、**同じキーが config にあれば config が優先**されます。
-
-```html
-<button data-help-title="保存" data-help-text="入力内容を保存します。">保存</button>
-```
-
-```js
-initHelpLayer({ toggle: '#help-toggle', config: {} });
-```
-
-### `<script>` だけで使う（バンドラなし）
-
-CDN から読む場合は、改ざん検知のため **バージョンを固定** し、**SRI（`integrity`）** を付けることを推奨します。
-
-```html
-<script
-  src="https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js"
-  integrity="sha384-……（公開版のハッシュに差し替え）"
-  crossorigin="anonymous"></script>
-<script>
-  HelpLayer.initHelpLayer({
-    toggle: '#help-toggle',
-    config: { save: { title: '保存', text: '入力内容を保存します。' } },
-  });
-</script>
-```
-
-> `integrity` のハッシュは公開した実ファイルから生成します。例:
-> `curl -s https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
-> （バージョンを固定しないと SRI と不整合になり読み込みが拒否されます。）
-
 ## 自由配置（要素に紐づけない説明）
 
 `position` を指定すると、特定要素ではなくページ座標にマーカーを置けます（画面全体の説明などに）。
@@ -178,9 +178,11 @@ help.enable();   // ON
 help.disable();  // OFF
 help.toggle();   // 反転
 help.isActive(); // boolean
-help.open(key);  // 指定キーの説明を開く（OFF 中なら自動で ON）
+help.open(key);  // 指定キーの説明を開く（OFF 中なら自動で ON）。
+                 // 同じ data-help-id を複数要素が持つ場合は最初の1つ（mount 順）を開き、警告を出す。
 help.close();    // 開いている説明を閉じる（モードは ON のまま）
 help.update(newConfig); // config を差し替え（ON 中なら無音で再構築。onEnable/onDisable は呼ばれない）
+help.diagnose(); // 実 DOM を走査し config の対応状況をログ＋返却（ON/OFF どちらでも）
 help.destroy();  // リスナー解除＋完全後始末
 ```
 
@@ -188,15 +190,16 @@ help.destroy();  // リスナー解除＋完全後始末
 
 | オプション | 型 | 既定 | 説明 |
 |------|------|------|------|
-| `config` | `object` | （必須） | キー→`{ title, text, position? }`。`data-help-id` 値 or 自由配置キー |
+| `config` | `object` | `{}` | キー→`{ title, text, position? }`。`data-help-id` 値 or 自由配置キー。任意（省略時はインライン `data-help-title` / `data-help-text` のみで対象化） |
 | `toggle` | `string \| HTMLElement` | なし | ON/OFF するトグル要素。省略時は API 制御のみ |
 | `attribute` | `string` | `'data-help-id'` | 対象を示す属性名 |
 | `render` | `(record) => Node \| null` | なし | 本文を自前 DOM で描画。返り値が無ければ安全なテキスト表示にフォールバック（タイトルは常に `record.title`） |
 | `markerLabel` | `string` | `'?'` | マーカーに表示する文字 |
-| `markerPlacement` | `Placement` | `'top-end'` | マーカーを重ねる隅（`top-end`/`top-start`/`bottom-end`/`bottom-start`） |
+| `markerPlacement` | `Placement` | `'top-end'` | マーカーを対象に重ねる位置。任意の `Placement` 値（`popupPlacement` と同じ12種）。`top-end`/`bottom-start` などの隅が一般的 |
 | `popupPlacement` | `Placement` | `'bottom-start'` | ポップアップ初期配置（画面端では自動で flip/shift） |
 | `nonce` | `string` | なし | 厳格な CSP（`style-src 'nonce-…'`）下で注入 `<style>` を許可するための nonce（後述） |
-| `silent` | `boolean` | `false` | 未登録キーの警告ログを抑止 |
+| `silent` | `boolean` | `false` | 非致命の警告ログを抑止（未登録キー・未知オプション・同一id の open） |
+| `debug` | `boolean` | `false` | 開発補助: `diagnose()` を `window.helpLayerDiagnose` としても公開 |
 
 ### コールバック
 
@@ -365,6 +368,62 @@ initHelpLayer({ config, toggle: '#help-toggle', nonce: pageNonce });
 
 これで注入される `<style nonce="xxxx">` が CSP に許可され、厳格 CSP 下でも正しく表示されます。
 `'unsafe-inline'` を許可しているサイトや CSP 未設定のサイトでは `nonce` は不要です。
+
+## 設定監査 CLI（`help-layer check`）
+
+`helpConfig` と markup の `data-help-id` がちゃんと噛み合っているかを、**アプリを起動せず**ターミナルで
+一発確認できます。ソースを走査して `data-help-id` の文字列リテラルを集め、config と突き合わせるので、
+タイポや定義もれをエディタ作業の最中に（あるいは CI で）見つけられます。
+
+```bash
+npx help-layer check --config ./src/helpConfig.js --src ./src
+```
+
+| オプション | 意味 |
+|------|----------|
+| `--config <path>` | config ファイル。`.json`、または `.js`/`.mjs` モジュール（default / `--export` の名前付き / 引数なしで呼べる factory 関数）。 |
+| `--src <path...>` | 走査するソースのルート（複数可・カンマ区切り可）。既定はカレントディレクトリ。 |
+| `--ext <list>` | 走査する拡張子（カンマ区切り）。既定: `html,htm,jsx,tsx,vue,js,ts,mjs,svelte`。 |
+| `--export <name>` | config を持つ export 名（関数なら引数なしで呼ぶ）。 |
+| `--attribute <attr>` | 対象属性名（既定 `data-help-id`）。 |
+| `--strict` | エラーだけでなく警告でも非ゼロ終了。 |
+
+出力カテゴリ: **bound**（config ↔ markup 紐づけ済み）、**free**（位置指定エントリ）、**inline**
+（`data-help-title`/`data-help-text` で成立・config なし）、**unusedConfig**（*警告*: config にあるが markup
+で未出現＝タイポ or 動的id）、**missingConfig**（*エラー*: id はあるが config もインライン定義も無く、マーカーが
+出ない）。エラーがあれば終了コード `1`（`--strict` なら警告でも `1`）で、CI ゲートに使えます。
+
+> 静的解析なので拾えるのは**文字列リテラル**の id だけです。`data-help-id={expr}` のような動的 id は解決
+> できず、その config キーは `unusedConfig`（エラーではなく警告）に出ます。
+
+### markup から config 雛形を生成（`help-layer scaffold`）
+
+既存アプリへの後付け導入時に、markup にある `data-help-id` から config 雛形を生成し、文言を埋めるだけにできます。
+インライン `data-help-title` / `data-help-text` があれば値を事前穴埋めします。
+
+```bash
+help-layer scaffold --src ./src > helpConfig.js        # 全 id の雛形を標準出力へ
+help-layer scaffold --src ./src --out helpConfig.js    # ...またはファイルに書き出し
+help-layer scaffold --src ./src --config ./helpConfig.js --export buildHelpConfig  # 未定義 id だけ
+```
+
+既定は JS モジュール（`export const helpConfig = { … }`）。`--format json` で JSON。既存 `--config` を渡すと
+**未定義の id だけ**を雛形化します。
+
+### ランタイム診断（`controller.diagnose()`）
+
+CLI は静的なので、**実行時の DOM**（動的 id・SPA で後から増えた要素）は controller の `diagnose()` で確認します。
+現在の DOM を走査し、表でログ出力しつつレポートオブジェクトを返します:
+
+```js
+const help = initHelpLayer({ config, toggle: '#help', debug: true });
+help.diagnose();        // ログ＋ { bound, inline, missingConfig, unmatchedConfig, free, summary } を返す
+```
+
+`debug: true` なら `window.helpLayerDiagnose()` としても公開され、devtools コンソールから直接叩けます。
+解説モードの ON/OFF を問わず動作します。CI は CLI、ブラウザでのデバッグは `diagnose()`、と補完しあう想定です。
+
+> `unmatchedConfig` は CLI の `unusedConfig` のランタイム版です（対応する要素が——ここでは実 DOM に——無い config キー）。
 
 ## 開発
 

@@ -296,15 +296,17 @@ export function createMarkerManager(state, {
     has(id) {
       return markers.has(id);
     },
-    // Return the first entry matching the config key (either element-bound or free placement).
-    // Used by the programmatic open(key).
-    findByKey(key) {
+    // Return every entry matching the config key, in mount order. Free placement keys are unique so this
+    // is at most one; element-bound keys can repeat (several elements sharing the same data-help-id), so
+    // the caller (programmatic open(key)) sees the multiplicity and can warn that it opens the first.
+    markersForKey(key) {
+      const matches = [];
       for (const entry of markers.values()) {
         if (entry.record.key === key) {
-          return entry;
+          matches.push(entry);
         }
       }
-      return null;
+      return matches;
     },
   };
 }

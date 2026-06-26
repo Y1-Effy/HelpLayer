@@ -34,21 +34,21 @@ function isValidPosition(position) {
  */
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
-    throw new Error('helpConfig must be a plain object');
+    throw new Error('help-layer: config must be a plain object');
   }
 
   for (const [key, entry] of Object.entries(config)) {
     if (!isPlainObject(entry)) {
-      throw new Error(`helpConfig["${key}"] must be an object`);
+      throw new Error(`help-layer: config["${key}"] must be an object`);
     }
     if (typeof entry.title !== 'string' || entry.title === '') {
-      throw new Error(`helpConfig["${key}"].title must be a non-empty string`);
+      throw new Error(`help-layer: config["${key}"].title must be a non-empty string`);
     }
     if (typeof entry.text !== 'string' || entry.text === '') {
-      throw new Error(`helpConfig["${key}"].text must be a non-empty string`);
+      throw new Error(`help-layer: config["${key}"].text must be a non-empty string`);
     }
     if (entry.position !== undefined && !isValidPosition(entry.position)) {
-      throw new Error(`helpConfig["${key}"].position must be { top: finite number, left: finite number }`);
+      throw new Error(`help-layer: config["${key}"].position must be { top: finite number, left: finite number }`);
     }
   }
 }

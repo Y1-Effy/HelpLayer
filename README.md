@@ -24,9 +24,9 @@ It never touches the host app's own event listeners — a transparent blocking l
 ## Table of contents
 
 - [Why HelpLayer (vs. existing options)](#why-helplayer-vs-existing-options)
-- [When it fits (where adoption pays off)](#when-it-fits-where-adoption-pays-off)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+- [When it fits (where adoption pays off)](#when-it-fits-where-adoption-pays-off)
 - [Free placement (descriptions not bound to an element)](#free-placement-descriptions-not-bound-to-an-element)
 - [API](#api)
 - [Recipes on top of the API (analytics, deep-linking, search, frameworks)](./RECIPES.md)
@@ -72,6 +72,72 @@ interaction), and it **fully cleans up on ON→OFF**.
 > That said, several of these (analytics, deep-linking, a search palette, framework glue) are easy to
 > build *on top* of the public API in a few lines — see **[RECIPES.md](./RECIPES.md)** for recipes.
 
+## Installation
+
+```sh
+npm install help-layer
+```
+
+If you'd rather drop it in with a single `<script>` and no bundler, load the prebuilt IIFE, which exposes a global `HelpLayer` (see below).
+
+TypeScript type definitions are bundled (`package.json`'s `types` points to `dist/types`), so type completion works with no extra setup in TS projects. The public types are importable, e.g. `import type { HelpLayerOptions, HelpLayerController, HelpConfig, HelpRecord, Placement } from 'help-layer'`.
+
+## Quick start
+
+### 1. Define targets with a config object
+
+Add `data-help-id` to a target element and pass a description keyed by that value.
+
+```html
+<button data-help-id="save">Save</button>
+<button id="help-toggle">Help mode</button>
+```
+
+```js
+import { initHelpLayer } from 'help-layer';
+
+initHelpLayer({
+  toggle: '#help-toggle',
+  config: {
+    save: { title: 'Save', text: 'Saves your input.' },
+  },
+});
+```
+
+### 2. Write it inline in your markup (no `config` needed)
+
+If you'd rather keep descriptions next to your markup, just add `data-help-title` / `data-help-text` to an element and it becomes a target.
+This can be combined with `config`, and **if the same key exists in `config`, the config wins**.
+
+```html
+<button data-help-title="Save" data-help-text="Saves your input.">Save</button>
+```
+
+```js
+initHelpLayer({ toggle: '#help-toggle' });
+```
+
+### Use it with just a `<script>` (no bundler)
+
+When loading from a CDN, we recommend **pinning the version** and adding **SRI (`integrity`)** so tampering is detectable.
+
+```html
+<script
+  src="https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js"
+  integrity="sha384-……(replace with the published file's hash)"
+  crossorigin="anonymous"></script>
+<script>
+  HelpLayer.initHelpLayer({
+    toggle: '#help-toggle',
+    config: { save: { title: 'Save', text: 'Saves your input.' } },
+  });
+</script>
+```
+
+> Generate the `integrity` hash from the actually published file, e.g.:
+> `curl -s https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> (If you don't pin the version, the SRI will mismatch and the browser will refuse to load it.)
+
 ## When it fits (where adoption pays off)
 
 - **A DAP / guide SaaS isn't worth the cost and you're considering canceling — but canceling drops your
@@ -100,72 +166,6 @@ interaction), and it **fully cleans up on ON→OFF**.
 > WebView (HTML/DOM), so you can drop HelpLayer in exactly as you would in a web app. It's a surprisingly
 > natural option when you want to add a "help mode" to a native-feeling screen.
 
-## Installation
-
-```sh
-npm install help-layer
-```
-
-If you'd rather drop it in with a single `<script>` and no bundler, load the prebuilt IIFE, which exposes a global `HelpLayer` (see below).
-
-TypeScript type definitions are bundled (`package.json`'s `types` points to `dist/types`), so type completion works with no extra setup in TS projects.
-
-## Quick start
-
-### 1. Define targets with a config object
-
-Add `data-help-id` to a target element and pass a description keyed by that value.
-
-```html
-<button data-help-id="save">Save</button>
-<button id="help-toggle">Help mode</button>
-```
-
-```js
-import { initHelpLayer } from 'help-layer';
-
-initHelpLayer({
-  toggle: '#help-toggle',
-  config: {
-    save: { title: 'Save', text: 'Saves your input.' },
-  },
-});
-```
-
-### 2. Write it inline in your markup (no per-entry config needed; `config: {}` still required)
-
-If you'd rather keep descriptions next to your markup, just add `data-help-title` / `data-help-text` to an element and it becomes a target.
-This can be combined with `config`, and **if the same key exists in `config`, the config wins**.
-
-```html
-<button data-help-title="Save" data-help-text="Saves your input.">Save</button>
-```
-
-```js
-initHelpLayer({ toggle: '#help-toggle', config: {} });
-```
-
-### Use it with just a `<script>` (no bundler)
-
-When loading from a CDN, we recommend **pinning the version** and adding **SRI (`integrity`)** so tampering is detectable.
-
-```html
-<script
-  src="https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js"
-  integrity="sha384-……(replace with the published file's hash)"
-  crossorigin="anonymous"></script>
-<script>
-  HelpLayer.initHelpLayer({
-    toggle: '#help-toggle',
-    config: { save: { title: 'Save', text: 'Saves your input.' } },
-  });
-</script>
-```
-
-> Generate the `integrity` hash from the actually published file, e.g.:
-> `curl -s https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
-> (If you don't pin the version, the SRI will mismatch and the browser will refuse to load it.)
-
 ## Free placement (descriptions not bound to an element)
 
 Specify `position` to place a marker at a page coordinate instead of on a specific element (useful for whole-screen descriptions, etc.).
@@ -184,9 +184,11 @@ help.enable();   // ON
 help.disable();  // OFF
 help.toggle();   // flip ON/OFF
 help.isActive(); // boolean
-help.open(key);  // open the description for the given key (auto-enables if OFF)
+help.open(key);  // open the description for the given key (auto-enables if OFF).
+                 // If several elements share that data-help-id, it opens the first (mount order) and warns.
 help.close();    // close the open description (the mode stays ON)
 help.update(newConfig); // replace the config (rebuilds silently if ON; onEnable/onDisable are not called)
+help.diagnose(); // scan the live DOM and log/return how the config maps onto it (works ON or OFF)
 help.destroy();  // detach listeners + full cleanup
 ```
 
@@ -194,15 +196,16 @@ help.destroy();  // detach listeners + full cleanup
 
 | Option | Type | Default | Description |
 |------|------|------|------|
-| `config` | `object` | (required) | key → `{ title, text, position? }`. The key is a `data-help-id` value or a free-placement key |
+| `config` | `object` | `{}` | key → `{ title, text, position? }`. The key is a `data-help-id` value or a free-placement key. Optional — omit it to define targets purely via inline `data-help-title` / `data-help-text` |
 | `toggle` | `string \| HTMLElement` | none | the toggle element that switches ON/OFF. If omitted, control is programmatic-only |
 | `attribute` | `string` | `'data-help-id'` | attribute name marking targets |
 | `render` | `(record) => Node \| null` | none | render the body with your own DOM. Falls back to safe text display when nothing is returned (the title is always `record.title`) |
 | `markerLabel` | `string` | `'?'` | the character shown on the marker |
-| `markerPlacement` | `Placement` | `'top-end'` | corner to overlap the marker onto (`top-end`/`top-start`/`bottom-end`/`bottom-start`) |
+| `markerPlacement` | `Placement` | `'top-end'` | where to overlap the marker onto the target — any `Placement` value (the same 12 as `popupPlacement`); the corners (e.g. `top-end`/`bottom-start`) are the usual choice |
 | `popupPlacement` | `Placement` | `'bottom-start'` | initial popup placement (flips/shifts automatically at screen edges) |
 | `nonce` | `string` | none | nonce to allow the injected `<style>` under a strict CSP (`style-src 'nonce-…'`); see below |
-| `silent` | `boolean` | `false` | suppress the warning log for unregistered keys |
+| `silent` | `boolean` | `false` | suppress non-fatal warning logs (unregistered keys, unknown options, duplicate-id open) |
+| `debug` | `boolean` | `false` | dev aid: also expose `diagnose()` as `window.helpLayerDiagnose` for the devtools console |
 
 ### Callbacks
 
@@ -377,6 +380,66 @@ initHelpLayer({ config, toggle: '#help-toggle', nonce: pageNonce });
 
 This lets the injected `<style nonce="xxxx">` be allowed by the CSP, so it renders correctly even under a strict CSP.
 On sites that allow `'unsafe-inline'` or have no CSP, `nonce` is not needed.
+
+## Config audit CLI (`help-layer check`)
+
+Check that your `helpConfig` and your markup actually line up — **without running the app**. It scans
+your source files for `data-help-id` literals and cross-references them with the config, so you can
+catch typos and missing definitions straight from the terminal (or in CI).
+
+```bash
+npx help-layer check --config ./src/helpConfig.js --src ./src
+```
+
+| Option | Meaning |
+|------|----------|
+| `--config <path>` | Config file. A `.json`, or a `.js`/`.mjs` module (default export, a named export via `--export`, or a no-arg factory). |
+| `--src <path...>` | Source roots to scan (repeatable or comma-separated). Default: current directory. |
+| `--ext <list>` | Comma-separated extensions to scan. Default: `html,htm,jsx,tsx,vue,js,ts,mjs,svelte`. |
+| `--export <name>` | Which export holds the config (a function export is called with no arguments). |
+| `--attribute <attr>` | Target attribute name (default `data-help-id`). |
+| `--strict` | Exit non-zero on warnings too, not just errors. |
+
+It reports: **bound** (config ↔ markup wired up), **free** (position-based entries), **inline**
+(rendered via `data-help-title`/`data-help-text`, no config), **unusedConfig** (a warning — a config
+key never seen in the markup, e.g. a typo or a dynamically-computed id), and **missingConfig** (an
+error — an id present in markup with no config and no inline definition, so no marker would show).
+Exit code is `1` when there are errors (or warnings too under `--strict`), making it CI-friendly.
+
+> Static analysis only sees **string-literal** ids. A computed id (`data-help-id={expr}`) can't be
+> resolved, so its config key shows up under `unusedConfig` (a warning, not an error).
+
+### Scaffold a config from your markup (`help-layer scaffold`)
+
+Adopting HelpLayer on an existing app? Generate a config skeleton from the `data-help-id`s already in
+your markup, then just fill in the wording. Inline `data-help-title` / `data-help-text` values are
+pre-filled when present.
+
+```bash
+help-layer scaffold --src ./src > helpConfig.js        # one stub per id, to stdout
+help-layer scaffold --src ./src --out helpConfig.js    # ...or write a file
+help-layer scaffold --src ./src --config ./helpConfig.js --export buildHelpConfig  # only the missing ids
+```
+
+Output defaults to a JS module (`export const helpConfig = { … }`); use `--format json` for JSON.
+Pass an existing `--config` to stub **only** the ids that aren't defined yet.
+
+### Runtime diagnostics (`controller.diagnose()`)
+
+The CLI is static; for the **live** DOM (dynamic ids, SPA-mounted elements) call `diagnose()` on the
+controller. It scans the current DOM, logs a grouped table, and returns a report object:
+
+```js
+const help = initHelpLayer({ config, toggle: '#help', debug: true });
+help.diagnose();        // logs + returns { bound, inline, missingConfig, unmatchedConfig, free, summary }
+```
+
+With `debug: true` it's also exposed as `window.helpLayerDiagnose()` so you can run it straight from
+the devtools console. It works whether help mode is ON or OFF. Use the CLI in CI, `diagnose()` while
+debugging in the browser — they complement each other.
+
+> `unmatchedConfig` is the runtime counterpart of the CLI's `unusedConfig` — a config key with no
+> matching element (here, in the live DOM).
 
 ## Development
 

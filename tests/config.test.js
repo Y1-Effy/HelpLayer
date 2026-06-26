@@ -9,21 +9,22 @@ describe('validateConfig', () => {
   });
 
   it('rejects a config that is not an object', () => {
-    expect(() => validateConfig(null)).toThrow();
+    // Errors are prefixed with help-layer: and name the public `config` option (not the internal "helpConfig").
+    expect(() => validateConfig(null)).toThrow(/help-layer: config must be a plain object/);
     expect(() => validateConfig('not an object')).toThrow();
     expect(() => validateConfig([])).toThrow();
   });
 
   it('rejects an entry that is not an object', () => {
-    expect(() => validateConfig({ save: 'not an object' })).toThrow();
+    expect(() => validateConfig({ save: 'not an object' })).toThrow(/help-layer: config\["save"\] must be an object/);
   });
 
   it('rejects an entry missing title', () => {
-    expect(() => validateConfig({ save: { text: 'description' } })).toThrow();
+    expect(() => validateConfig({ save: { text: 'description' } })).toThrow(/config\["save"\]\.title/);
   });
 
   it('rejects an entry missing text', () => {
-    expect(() => validateConfig({ save: { title: 'Save' } })).toThrow();
+    expect(() => validateConfig({ save: { title: 'Save' } })).toThrow(/config\["save"\]\.text/);
   });
 
   it('rejects an entry with a malformed position', () => {

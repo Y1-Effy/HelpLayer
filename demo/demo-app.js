@@ -229,6 +229,8 @@ const help = initHelpLayer({
   config: currentHelpConfig(),
   toggle: toggleBtn,
   markerLabel: 'i',
+  // Dev aid: exposes window.helpLayerDiagnose() so you can audit the live config mapping from the console.
+  debug: true,
   // render is the escape hatch to draw the body area with your own DOM.
   // Returning nothing falls back to the default text rendering (the title is always record.title).
   render: (record) => {

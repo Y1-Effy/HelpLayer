@@ -274,6 +274,7 @@ createApp({
         <a href="./">Vanilla</a>
         <a href="./react.html">React</a>
         <a href="./vue.html" aria-current="page">Vue</a>
+        <a href="./stress.html">Stress</a>
         <div class="demo-lang" role="group" aria-label="Language">
           <button v-for="code in langs" :key="code" type="button" class="demo-lang__btn"
             :aria-pressed="String(code === lang)" @click="changeLang(code)">{{ langLabels[code] }}</button>

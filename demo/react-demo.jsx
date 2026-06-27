@@ -258,6 +258,7 @@ function ReactIntegrationDemo({ lang, onChangeLang, onUnmountDemo }) {
         <a href="./">Vanilla</a>
         <a href="./react.html" aria-current="page">React</a>
         <a href="./vue.html">Vue</a>
+        <a href="./stress.html">Stress</a>
         <LangSwitcher lang={lang} onChange={onChangeLang} />
       </nav>
 
@@ -362,6 +363,7 @@ function App() {
           <a href="./">Vanilla</a>
           <a href="./react.html" aria-current="page">React</a>
           <a href="./vue.html">Vue</a>
+          <a href="./stress.html">Stress</a>
           <LangSwitcher lang={lang} onChange={changeLang} />
         </nav>
         <section className="framework-card">

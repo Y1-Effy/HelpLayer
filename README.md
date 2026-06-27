@@ -325,9 +325,19 @@ first at scale is the per-frame tracking, which grows linearly with the number o
 Rough guidance (markers shown **at the same time**):
 
 - **Up to a few hundred** — comfortable on typical hardware.
-- **~1000** — still smooth in our measurements (a locked 60fps under continuous auto-scroll on the
-  bundled stress page).
+- **~1000** — still smooth in our testing (a locked 60fps under continuous auto-scroll on the
+  bundled [stress page](./demo/stress.html)).
 - **Well beyond that** — the per-frame tracking during scroll/animation eventually shows.
+
+**How to reproduce this.** The numbers above come from the bundled stress page
+([`demo/stress.html`](./demo/stress.html); run `npm run demo` and open
+<http://localhost:5500/demo/stress.html>, or use the hosted
+<https://y1-effy.github.io/HelpLayer/stress.html>). Turn Help mode ON, pick a marker count
+(100–1000), and enable **Auto-scroll** — the worst case, where every visible marker re-tracks on each
+frame. The meter shows a moving average of `requestAnimationFrame` deltas as frame **ms** and **fps**;
+measure on your own target hardware (browser/CPU/zoom all move the number), and compare builds by
+swapping the source under it (e.g. `git stash`). Reported figures are from our own runs, not a fixed
+reference machine.
 
 Even so, the mode is **exploratory** — users pick the spot they want, so a screen rarely needs more than
 a few dozen markers. On large pages, scope your targets, or split them per page/tab (e.g. swap sets with
@@ -447,7 +457,7 @@ debugging in the browser — they complement each other.
 |------|----------|
 | Test | `npm test` |
 | Lint / typecheck / all | `npm run lint` / `npm run typecheck` / `npm run check` |
-| Run the demo | `npm run demo` |
+| Run the demo | `npm run demo` (then open `/demo/stress.html` for the perf stress page) |
 | Build the distribution | `npm run build` (emits ESM, IIFE, and type definitions to `dist/`) |
 
 ## Repository

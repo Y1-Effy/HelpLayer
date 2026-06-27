@@ -26,6 +26,10 @@
   .stress-meter { margin-left: auto; font-variant-numeric: tabular-nums; }
   .stress-meter strong { font-size: 18px; }
   main { padding: 70px 16px 40px; }
+  .stress-note {
+    margin: 0 0 20px; max-width: 720px;
+    font-size: 13px; line-height: 1.6; color: #475569;
+  }
   .stress-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 28px 24px;
   }
@@ -54,74 +58,15 @@
 </div>
 
 <main>
+  <p class="stress-note">
+    frame ms / fps is the cost of re-positioning every visible marker each frame. Enable
+    <strong>Auto-scroll</strong> and pick a marker count, then turn Help mode ON — every visible marker
+    re-tracks on each frame (the worst case). Host controls are inert while Help mode is ON, so set these
+    first. Lower ms / higher fps is better.
+  </p>
   <div id="stress-grid" class="stress-grid" aria-label="Stress targets"></div>
 </main>
 
-<script type="module">
-import { initHelpLayer } from '../src/index.js';
-
-const grid = document.getElementById('stress-grid');
-const countSelect = document.getElementById('stress-count');
-const autoscroll = document.getElementById('stress-autoscroll');
-const msEl = document.getElementById('stress-ms');
-const fpsEl = document.getElementById('stress-fps');
-
-let help = null;
-
-// (Re)build the grid of N targets and a fresh help layer over them. Each cell carries its own
-// data-help-* so no central config is needed (matcher.js falls back to the data attributes).
-function rebuild(n) {
-  if (help) {
-    help.destroy();
-    help = null;
-  }
-  grid.replaceChildren();
-  const frag = document.createDocumentFragment();
-  for (let i = 0; i < n; i++) {
-    const cell = document.createElement('button');
-    cell.type = 'button';
-    cell.className = 'stress-cell';
-    cell.setAttribute('data-help-id', `s${i}`);
-    cell.setAttribute('data-help-title', `Field ${i}`);
-    cell.setAttribute('data-help-text', `This is the explanation for field ${i}.`);
-    cell.textContent = `Field ${i}`;
-    frag.appendChild(cell);
-  }
-  grid.appendChild(frag);
-  // No config: every target is described inline via its data-help-* attributes (matcher.js fallback).
-  help = initHelpLayer({ toggle: '#help-layer-toggle' });
-}
-
-countSelect.addEventListener('change', () => rebuild(Number(countSelect.value)));
-
-// Frame-time meter: moving average over the last 60 rAF deltas. Text is updated ~6x/sec so the
-// measurement itself stays cheap and doesn't skew the numbers it reports.
-const samples = [];
-let last = performance.now();
-let lastPaint = 0;
-function meter(now) {
-  const delta = now - last;
-  last = now;
-  samples.push(delta);
-  if (samples.length > 60) {
-    samples.shift();
-  }
-  if (autoscroll.checked) {
-    // Loop the scroll so markers keep re-tracking every frame (the expensive path).
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo(0, max > 0 && window.scrollY >= max ? 0 : window.scrollY + 6);
-  }
-  if (now - lastPaint > 160) {
-    lastPaint = now;
-    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
-    msEl.textContent = avg.toFixed(1);
-    fpsEl.textContent = (1000 / avg).toFixed(0);
-  }
-  requestAnimationFrame(meter);
-}
-requestAnimationFrame(meter);
-
-rebuild(Number(countSelect.value));
-</script>
+<script type="module" src="stress.js"></script>
 </body>
 </html>

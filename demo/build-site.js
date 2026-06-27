@@ -50,6 +50,11 @@ await Promise.all([
   }),
   build({
     ...shared,
+    entryPoints: [path.join(demoDir, 'stress.js')],
+    outfile: path.join(siteDir, 'stress.js'),
+  }),
+  build({
+    ...shared,
     entryPoints: [path.join(demoDir, 'react-demo.jsx')],
     outfile: path.join(siteDir, 'react-demo.js'),
     jsx: 'automatic',
@@ -88,6 +93,8 @@ await Promise.all([
   // React/Vue already load a bundle; just point at the flat site path instead of dist/.
   emitHtml('react.html', 'react.html', (html) => html.replace('dist/react-demo.js', 'react-demo.js')),
   emitHtml('vue.html', 'vue.html', (html) => html.replace('dist/vue-demo.js', 'vue-demo.js')),
+  // Stress page: its <script src="stress.js"> already points at the (now bundled) sibling file, so copy as-is.
+  emitHtml('stress.html', 'stress.html', (html) => html),
 ]);
 
 console.log(`help-layer demo site built: ${path.relative(rootDir, siteDir)}/`);

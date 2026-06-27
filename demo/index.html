@@ -16,6 +16,7 @@
     <a href="./" aria-current="page">Vanilla</a>
     <a href="./react.html">React</a>
     <a href="./vue.html">Vue</a>
+    <a href="./stress.html">Stress</a>
     <div id="demo-lang-slot" class="demo-lang-slot"></div>
   </nav>
 
@@ -103,9 +104,38 @@
     </div>
   </section>
 
+  <section class="demo-card" data-snippet="diagnostics">
+    <h2 data-i18n="diagnosticsTitle">Check your config against the live DOM</h2>
+    <p data-i18n="diagnosticsDesc">diagnose() scans the page right now and reports how each config key maps onto it — including dynamic and Shadow DOM elements a static scan can't see.</p>
+    <button type="button" id="demo-diagnose" class="demo-btn demo-btn--primary" data-i18n="diagnoseBtn">Run diagnose()</button>
+    <div class="demo-diagnose" id="demo-diagnose-out" aria-live="polite"></div>
+    <p class="demo-cli-note" data-i18n="cliNote">For CI, the help-layer check CLI runs the same audit statically from your source files, and scaffold generates a config stub from your markup.</p>
+  </section>
+
   <section class="demo-card" data-snippet="customize">
     <h2 data-i18n="customizeTitle">Make it match your UI</h2>
     <p data-i18n="customizeDesc">Tune behavior with options, and restyle entirely with CSS custom properties (dark mode is built in). Nothing here requires changing your app code.</p>
+    <div class="demo-placement">
+      <div class="demo-placement__row">
+        <label class="demo-mini-label" for="demo-marker-placement" data-i18n="markerPlacementLabel">Marker placement</label>
+        <select id="demo-marker-placement" class="demo-select">
+          <option value="top-start">top-start</option>
+          <option value="top-end" selected>top-end</option>
+          <option value="bottom-start">bottom-start</option>
+          <option value="bottom-end">bottom-end</option>
+        </select>
+      </div>
+      <div class="demo-placement__row">
+        <label class="demo-mini-label" for="demo-popup-placement" data-i18n="popupPlacementLabel">Popup placement</label>
+        <select id="demo-popup-placement" class="demo-select">
+          <option value="top-start">top-start</option>
+          <option value="top-end">top-end</option>
+          <option value="bottom-start" selected>bottom-start</option>
+          <option value="bottom-end">bottom-end</option>
+        </select>
+      </div>
+      <p class="demo-placement__hint" data-i18n="placementHint">Pick a placement, then turn Help mode ON to see where markers and popups anchor. (Host controls are inert while Help mode is ON, so change them first.)</p>
+    </div>
   </section>
 </main>
 

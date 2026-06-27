@@ -54,11 +54,26 @@ const ui = {
     shadowP: 'This is inside Shadow DOM.',
     shadowBtn: 'Button inside the shadow',
     dynamicRow: 'Dynamic row',
-    linkText: 'Open the Floating UI site',
+    linkText: 'Open the HelpLayer docs',
     apitargetVariantTitle: 'Description updated from the API',
     apitargetVariantText: 'With update(config) you can swap the config and rebuild even while help mode is ON.',
     freeVariantTitle: 'Updated screen description',
     freeVariantText: 'This free-placement marker is also regenerated after update(config).',
+    diagnosticsTitle: 'Check your config against the live DOM',
+    diagnosticsDesc: "diagnose() scans the page right now and reports how each config key maps onto it — including dynamic and Shadow DOM elements a static scan can't see.",
+    diagnoseBtn: 'Run diagnose()',
+    diagCaption: "diagnose() result (also printed to the console). With debug:true it's callable as window.helpLayerDiagnose().",
+    diagCategory: 'Category',
+    diagCount: 'Count',
+    diagBound: 'bound (config → element)',
+    diagInline: 'inline (data attrs only)',
+    diagUnmatched: 'unmatchedConfig (no element now)',
+    diagFree: 'free (placement coords)',
+    diagMissing: 'missingConfig (error)',
+    cliNote: 'For CI, the help-layer check CLI runs the same audit statically from your source files, and scaffold generates a config stub from your markup.',
+    markerPlacementLabel: 'Marker placement',
+    popupPlacementLabel: 'Popup placement',
+    placementHint: 'Pick a placement, then turn Help mode ON to see where markers and popups anchor. (Host controls are inert while Help mode is ON, so change them first.)',
   },
   ja: {
     docTitle: 'HelpLayer デモ',
@@ -104,11 +119,26 @@ const ui = {
     shadowP: 'これは Shadow DOM の中です。',
     shadowBtn: 'Shadow内のボタン',
     dynamicRow: '動的な行',
-    linkText: 'Floating UI のサイトを開く',
+    linkText: 'HelpLayer のドキュメントを開く',
     apitargetVariantTitle: 'API から更新された説明',
     apitargetVariantText: 'update(config) によって、解説モードON中でも設定を差し替えて再構築できます。',
     freeVariantTitle: '更新後の画面説明',
     freeVariantText: 'この自由配置マーカーも update(config) の差し替え後に再生成されています。',
+    diagnosticsTitle: 'config と実 DOM の対応を確認',
+    diagnosticsDesc: 'diagnose() は今この瞬間のページを走査し、各 config キーがどの要素に対応しているかを報告します。静的走査では見えない動的要素や Shadow DOM も含みます。',
+    diagnoseBtn: 'diagnose() を実行',
+    diagCaption: 'diagnose() の結果（コンソールにも出力）。debug:true なら window.helpLayerDiagnose() でも呼べます。',
+    diagCategory: '分類',
+    diagCount: '件数',
+    diagBound: 'bound（config→要素）',
+    diagInline: 'inline（data属性のみ）',
+    diagUnmatched: 'unmatchedConfig（今は要素なし）',
+    diagFree: 'free（座標配置）',
+    diagMissing: 'missingConfig（エラー）',
+    cliNote: 'CI 向けには help-layer check CLI が同じ監査をソースから静的に実行し、scaffold がマークアップから config 雛形を生成します。',
+    markerPlacementLabel: 'マーカー配置',
+    popupPlacementLabel: 'ポップアップ配置',
+    placementHint: '配置を選んでから解説モードを ON にすると、マーカー/ポップアップの位置を確認できます（ON 中は host 操作が無効になるため、先に変更してください）。',
   },
 };
 
@@ -225,44 +255,119 @@ const showcase = mountShowcase({ toggleEl: toggleBtn, lang });
 // Shared footer: value chips, a11y note, copy-paste install, and links out (adoption path).
 const siteChrome = mountSiteChrome(lang);
 
-const help = initHelpLayer({
-  config: currentHelpConfig(),
-  toggle: toggleBtn,
-  markerLabel: 'i',
-  // Dev aid: exposes window.helpLayerDiagnose() so you can audit the live config mapping from the console.
-  debug: true,
-  // render is the escape hatch to draw the body area with your own DOM.
-  // Returning nothing falls back to the default text rendering (the title is always record.title).
-  render: (record) => {
-    if (record.key !== 'richlink') {
-      return null;
-    }
-    const link = document.createElement('a');
-    link.href = 'https://floating-ui.com/';
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.textContent = t('linkText');
-    return link;
-  },
-  onEnable: () => {
-    toggleBtn.setAttribute('aria-pressed', 'true');
-    toggleBtn.textContent = t('toggleOn');
-    showcase.handleEnable();
-    log('onEnable');
-  },
-  onDisable: () => {
-    toggleBtn.setAttribute('aria-pressed', 'false');
-    toggleBtn.textContent = t('toggle');
-    showcase.handleDisable();
-    log('onDisable');
-  },
-  onOpen: (record) => {
-    showcase.handleOpen();
-    log(`onOpen: ${record.key ?? 'inline'}`);
-  },
-  onClose: () => {
-    log('onClose');
-  },
+// Placement playground controls (in the Customize card). markerPlacement / popupPlacement are read at
+// init time, so changing them rebuilds the instance below.
+const markerPlacementSel = document.getElementById('demo-marker-placement');
+const popupPlacementSel = document.getElementById('demo-popup-placement');
+
+// Build the single help instance. Wrapped in a function so the placement playground can rebuild it with
+// new markerPlacement / popupPlacement; the API/diagnose handlers below read `help` lazily, so they keep
+// working across rebuilds.
+function createHelp() {
+  return initHelpLayer({
+    config: currentHelpConfig(),
+    toggle: toggleBtn,
+    markerLabel: 'i',
+    markerPlacement: markerPlacementSel.value,
+    popupPlacement: popupPlacementSel.value,
+    // Dev aid: exposes window.helpLayerDiagnose() so you can audit the live config mapping from the console.
+    debug: true,
+    // render is the escape hatch to draw the body area with your own DOM.
+    // Returning nothing falls back to the default text rendering (the title is always record.title).
+    render: (record) => {
+      if (record.key !== 'richlink') {
+        return null;
+      }
+      const link = document.createElement('a');
+      link.href = 'https://github.com/Y1-Effy/HelpLayer#readme';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = t('linkText');
+      return link;
+    },
+    onEnable: () => {
+      toggleBtn.setAttribute('aria-pressed', 'true');
+      toggleBtn.textContent = t('toggleOn');
+      showcase.handleEnable();
+      log('onEnable');
+    },
+    onDisable: () => {
+      toggleBtn.setAttribute('aria-pressed', 'false');
+      toggleBtn.textContent = t('toggle');
+      showcase.handleDisable();
+      log('onDisable');
+    },
+    onOpen: (record) => {
+      showcase.handleOpen();
+      log(`onOpen: ${record.key ?? 'inline'}`);
+    },
+    onClose: () => {
+      log('onClose');
+    },
+  });
+}
+
+let help = createHelp();
+
+// Swap markerPlacement / popupPlacement by rebuilding the instance, preserving the ON/OFF state so the
+// change is visible immediately on the existing markers.
+function rebuildHelpPreservingState() {
+  const wasActive = help.isActive();
+  help.destroy();
+  help = createHelp();
+  if (wasActive) {
+    help.enable();
+  }
+}
+markerPlacementSel.addEventListener('change', rebuildHelpPreservingState);
+popupPlacementSel.addEventListener('change', rebuildHelpPreservingState);
+
+// --- Runtime diagnostics: render diagnose()'s per-category summary onto the page ---
+const diagnoseOut = document.getElementById('demo-diagnose-out');
+let lastDiagnose = null;
+
+// diagnose() returns the full RuntimeReport (and logs a console.table); here we surface just the
+// per-category counts so the page shows the same picture. Built with textContent only (XSS-safe).
+function renderDiagnose(report) {
+  const { summary } = report;
+  const rows = [
+    ['diagBound', summary.bound],
+    ['diagInline', summary.inline],
+    ['diagUnmatched', summary.unmatchedConfig],
+    ['diagFree', summary.free],
+    ['diagMissing', summary.missingConfig],
+  ];
+  diagnoseOut.textContent = '';
+
+  const caption = document.createElement('p');
+  caption.className = 'demo-diagnose__caption';
+  caption.textContent = t('diagCaption');
+
+  const table = document.createElement('table');
+  table.className = 'demo-diagnose__table';
+  const head = document.createElement('tr');
+  for (const key of ['diagCategory', 'diagCount']) {
+    const th = document.createElement('th');
+    th.textContent = t(key);
+    head.appendChild(th);
+  }
+  table.appendChild(head);
+  for (const [labelKey, count] of rows) {
+    const tr = document.createElement('tr');
+    const cat = document.createElement('td');
+    cat.textContent = t(labelKey);
+    const num = document.createElement('td');
+    num.textContent = String(count);
+    tr.append(cat, num);
+    table.appendChild(tr);
+  }
+
+  diagnoseOut.append(caption, table);
+}
+
+document.getElementById('demo-diagnose').addEventListener('click', () => {
+  lastDiagnose = help.diagnose();
+  renderDiagnose(lastDiagnose);
 });
 
 document.getElementById('demo-api-open').addEventListener('click', () => {
@@ -360,6 +465,18 @@ initHelpLayer({
   nonce: pageNonce,           // allow the injected <style> under a strict CSP
   render(record) { /* return your own DOM for the body */ },
 });`,
+  // The Diagnostics card shows two separately-copyable blocks: the runtime API (JS) and the static CLI.
+  diagnosticsJs: `// Runtime diagnostics: scan the live DOM and report the mapping.
+const help = initHelpLayer({ toggle: '#help-toggle', config, debug: true });
+
+const report = help.diagnose();   // also prints a console.table
+console.log(report.summary);      // { bound, inline, missingConfig, ... }
+// With debug:true it's also on window.helpLayerDiagnose().`,
+  diagnosticsCli: `# Static audit from your source files (great for CI):
+npx help-layer check --config helpConfig.js --src src
+
+# Generate a config stub from the data-help-id's in your markup:
+npx help-layer scaffold --src src --out helpConfig.js`,
   customizeCss: `/* Theme via CSS custom properties (dark mode is built in) */
 :root {
   --help-layer-marker-bg: #0f6bff;
@@ -391,6 +508,12 @@ document.querySelectorAll('[data-snippet]').forEach((card) => {
   if (key === 'customize') {
     addCodeBlock(card, SNIPPETS.customizeJs);
     addCodeBlock(card, SNIPPETS.customizeCss);
+    return;
+  }
+  // The Diagnostics card pairs the runtime API with the static CLI, as two copyable blocks.
+  if (key === 'diagnostics') {
+    addCodeBlock(card, SNIPPETS.diagnosticsJs);
+    addCodeBlock(card, SNIPPETS.diagnosticsCli);
     return;
   }
   const code = SNIPPETS[key];
@@ -441,6 +564,11 @@ function applyLang() {
     summary.textContent = sc.showCode;
     copyBtn.textContent = sc.copy;
   });
+
+  // Re-render the diagnose() table (if shown) so its labels follow the language too.
+  if (lastDiagnose) {
+    renderDiagnose(lastDiagnose);
+  }
 
   // Rebuild the config in the new language (a no-op rebuild when OFF; live rebuild when ON).
   help.update(currentHelpConfig());

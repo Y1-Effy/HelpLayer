@@ -20,7 +20,7 @@ export const SHOWCASE_STRINGS = {
     copied: 'Copied!',
     // Footer (adoption path): value chips, a11y note, install, links.
     valueChips: [
-      '1 dependency · ~33KB',
+      'Zero dependencies · ~8KB gzip',
       'Framework-agnostic',
       'Full teardown on OFF',
       'Accessible (a11y)',
@@ -47,7 +47,7 @@ export const SHOWCASE_STRINGS = {
     copied: 'コピーしました',
     // フッター（導入動線）：価値チップ・a11yノート・Install・リンク。
     valueChips: [
-      '依存1つ・約33KB',
+      '依存ゼロ・約8KB(gzip)',
       'フレームワーク非依存',
       'OFFで完全後始末',
       'アクセシブル(a11y)',

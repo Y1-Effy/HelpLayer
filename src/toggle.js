@@ -273,7 +273,8 @@ export function createToggleController(options) {
     }
   }
 
-  // Replace the helpConfig. If ON, rebuild silently (onEnable/onDisable are not fired).
+  // Replace the helpConfig. If ON, rebuild via turnOff()+turnOn(): onEnable/onDisable are not fired, but
+  // a popup open at the time is closed by the teardown (so onClose fires) and focus returns to the toggle.
   function update(newConfig) {
     validateConfig(newConfig);
     activeConfig = newConfig;

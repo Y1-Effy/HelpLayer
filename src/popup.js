@@ -75,6 +75,13 @@ export function createPopupController(state, { onClose, render, popupPlacement =
    * @param {HTMLElement} referenceEl placement reference (the clicked marker element)
    */
   function open(record, referenceEl) {
+    // Switching straight from one marker's popup to another's is a close of the previous followed by an
+    // open of the new one, so emit onClose for the previous to keep open/close callbacks balanced
+    // (analytics rely on the pairing). We deliberately don't run the full hide() here — no DOM hide and
+    // no focus return — because the popup stays shown and merely re-points at the new reference.
+    if (openId !== null && openId !== record.id) {
+      safeInvoke('onClose', onClose);
+    }
     titleEl.textContent = record.title;
     // If render exists, replace the body with a custom Node; otherwise fall back to safe text rendering.
     // A throwing render yields undefined here, so we degrade to the safe textContent path below.

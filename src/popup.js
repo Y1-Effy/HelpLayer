@@ -20,9 +20,11 @@ import { safeInvoke } from './safe.js';
  *   if nothing is returned, fall back to safe text rendering (textContent). The title is always record.title.
  *   Note: the return value is appendChild'd as-is without sanitization, so untrusted data must be neutralized by the caller.
  * @param {import('./types.js').Placement} [options.popupPlacement] initial placement (default 'bottom-start')
+ * @param {string} [options.closeLabel] aria-label for the close (×) button (default 'Close'); lets callers
+ *   localize the assistive-tech announcement
  */
-export function createPopupController(state, { onClose, render, popupPlacement = 'bottom-start' } = {}) {
-  const { root, titleEl, textEl, closeEl } = createPopup();
+export function createPopupController(state, { onClose, render, popupPlacement = 'bottom-start', closeLabel } = {}) {
+  const { root, titleEl, textEl, closeEl } = createPopup(closeLabel);
   // Drive the open/close state with an inline !important display so it beats both this library's own
   // stylesheet and any host rule (e.g. div { display:none !important }). Start hidden.
   root.style.setProperty('display', 'none', 'important');

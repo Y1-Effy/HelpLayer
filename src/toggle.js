@@ -27,7 +27,7 @@ import { injectStyles, removeStyles } from './style.js';
 const KNOWN_OPTIONS = new Set([
   'config', 'toggle', 'onEnable', 'onDisable', 'onOpen', 'onClose',
   'silent', 'attribute', 'render', 'markerLabel', 'markerPlacement',
-  'popupPlacement', 'nonce', 'debug',
+  'popupPlacement', 'markerAriaLabel', 'closeLabel', 'nonce', 'debug',
 ]);
 
 function resolveToggleElement(toggle) {
@@ -62,6 +62,9 @@ function resolveToggleElement(toggle) {
  * @param {string} [options.markerLabel] character shown on the marker (default '?')
  * @param {import('./types.js').Placement} [options.markerPlacement] corner to overlap the marker onto (default 'top-end')
  * @param {import('./types.js').Placement} [options.popupPlacement] initial popup placement (default 'bottom-start')
+ * @param {(title: string) => string} [options.markerAriaLabel] build a marker's aria-label from the help title
+ *   (default `Help: ${title}`); use it to localize the assistive-tech announcement
+ * @param {string} [options.closeLabel] aria-label for the popup's close (×) button (default 'Close'); localizable
  * @param {string} [options.nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
  * @param {boolean} [options.debug] also expose diagnose() as window.helpLayerDiagnose for the devtools console
  */
@@ -84,6 +87,8 @@ export function createToggleController(options) {
     markerLabel = '?',
     markerPlacement = 'top-end',
     popupPlacement = 'bottom-start',
+    markerAriaLabel,
+    closeLabel,
     nonce,
     debug = false,
   } = options;
@@ -129,10 +134,11 @@ export function createToggleController(options) {
     const items = normalizeConfig(activeConfig);
     const configMap = elementConfigMap(items);
 
-    popup = createPopupController(state, { onClose, render, popupPlacement });
+    popup = createPopupController(state, { onClose, render, popupPlacement, closeLabel });
     markers = createMarkerManager(state, {
       markerLabel,
       markerPlacement,
+      ...(markerAriaLabel ? { markerAriaLabel } : {}),
       onMarkerClick: (record, markerEl) => {
         if (popup.isOpen(record.id)) {
           popup.close();

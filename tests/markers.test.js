@@ -74,6 +74,22 @@ describe('createMarkerManager', () => {
     expect(document.querySelector('.help-layer-marker').textContent).toBe('i');
   });
 
+  it('labels the marker "Help: <title>" by default and honors a custom markerAriaLabel', () => {
+    const state = createState();
+    const manager = createMarkerManager(state, { onMarkerClick: jest.fn() });
+    manager.mount(elementRecord('a'));
+    expect(document.querySelector('.help-layer-marker').getAttribute('aria-label')).toBe('Help: a');
+
+    const state2 = createState();
+    const manager2 = createMarkerManager(state2, {
+      onMarkerClick: jest.fn(),
+      markerAriaLabel: (title) => `ヘルプ: ${title}`,
+    });
+    manager2.mount(elementRecord('b'));
+    const labels = [...document.querySelectorAll('.help-layer-marker')].map((m) => m.getAttribute('aria-label'));
+    expect(labels).toContain('ヘルプ: b');
+  });
+
   it('markerLabel defaults to "?"', () => {
     const state = createState();
     const manager = createMarkerManager(state, { onMarkerClick: jest.fn() });

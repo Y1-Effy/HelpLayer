@@ -330,6 +330,74 @@ test('the Customize card documents options and theme CSS variables', async({ pag
   await expect(blocks.nth(1).locator('pre code')).toContainText('--help-layer-marker-bg');
 });
 
+test('Escape closes the popup first, then exits help mode (two stages)', async({ page }) => {
+  // jsdom can't exercise the real document-capture keydown handler + focus moves; do it in a browser.
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+
+  await page.locator(MARKER).first().click();
+  await expect(page.locator(POPUP)).toBeVisible();
+
+  // First Escape: only the popup closes; markers stay (mode still ON).
+  await page.keyboard.press('Escape');
+  await expect(page.locator(POPUP)).toBeHidden();
+  expect(await page.locator(MARKER).count()).toBeGreaterThan(0);
+
+  // Second Escape: the mode exits and markers are gone, with focus back on the toggle.
+  await page.keyboard.press('Escape');
+  await expect(page.locator(MARKER)).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement === document.querySelector('#help-layer-toggle'))).toBe(true);
+});
+
+test('clicking the blocking layer (scrim) closes an open popup', async({ page }) => {
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+  await page.locator(MARKER).first().click();
+  await expect(page.locator(POPUP)).toBeVisible();
+
+  // Click an empty corner of the scrim (away from markers/popup); the background click closes the popup.
+  const vp = page.viewportSize();
+  await page.mouse.click(vp.width - 4, vp.height - 4);
+  await expect(page.locator(POPUP)).toBeHidden();
+});
+
+test('a target inside open Shadow DOM gets a marker that opens its popup', async({ page }) => {
+  // queryAllDeep pierces open shadow roots — a behavior jsdom can't faithfully reproduce.
+  await page.click(TOGGLE);
+  const shadowMarker = page.locator('.help-layer-marker[aria-label="Help: Button inside Shadow DOM"]');
+  await expect(shadowMarker).toBeVisible();
+  await shadowMarker.click();
+  await expect(page.locator(POPUP)).toBeVisible();
+  await expect(page.locator('.help-layer-popup__title')).toHaveText('Button inside Shadow DOM');
+});
+
+test('a free-placement marker appears and opens its popup', async({ page }) => {
+  await page.click(TOGGLE);
+  const freeMarker = page.locator('.help-layer-marker[aria-label="Help: About this screen"]');
+  await expect(freeMarker).toBeVisible();
+  await freeMarker.click();
+  await expect(page.locator(POPUP)).toBeVisible();
+  await expect(page.locator('.help-layer-popup__title')).toHaveText('About this screen');
+});
+
+test('a marker mounts for a target added to the DOM while ON (SPA)', async({ page }) => {
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+  const before = await page.locator(MARKER).count();
+
+  // Programmatic DOM mutation (not a user click, which the scrim would block): the MutationObserver
+  // mounts a marker for the newly added data-help-id element.
+  await page.evaluate(() => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('data-help-id', 'dynamic');
+    btn.textContent = 'Programmatically added';
+    document.getElementById('demo-dynamic-list').appendChild(btn);
+  });
+
+  await expect(page.locator(MARKER)).toHaveCount(before + 1);
+});
+
 test('the HelpLayer DOM footprint returns to zero after disabling (teardown proof)', async({ page }) => {
   const footprint = () => page.evaluate(() =>
     document.querySelectorAll(

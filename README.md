@@ -203,6 +203,8 @@ help.destroy();  // detach listeners + full cleanup
 | `markerLabel` | `string` | `'?'` | the character shown on the marker |
 | `markerPlacement` | `Placement` | `'top-end'` | where to overlap the marker onto the target — any `Placement` value (the same 12 as `popupPlacement`); the corners (e.g. `top-end`/`bottom-start`) are the usual choice |
 | `popupPlacement` | `Placement` | `'bottom-start'` | initial popup placement (flips/shifts automatically at screen edges) |
+| `markerAriaLabel` | `(title: string) => string` | `` `Help: ${title}` `` | build a marker's `aria-label` from the help title — localize the screen-reader announcement |
+| `closeLabel` | `string` | `'Close'` | `aria-label` for the popup's close (×) button — localize the screen-reader announcement |
 | `nonce` | `string` | none | nonce to allow the injected `<style>` under a strict CSP (`style-src 'nonce-…'`); see below |
 | `silent` | `boolean` | `false` | suppress non-fatal warning logs (unregistered keys, unknown options, duplicate-id open) |
 | `debug` | `boolean` | `false` | dev aid: also expose `diagnose()` as `window.helpLayerDiagnose` for the devtools console |
@@ -464,4 +466,5 @@ debugging in the browser — they complement each other.
 
 - Source: <https://github.com/Y1-Effy/HelpLayer>
 - Issues & requests: <https://github.com/Y1-Effy/HelpLayer/issues>
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
 - License: [ISC](./LICENSE)

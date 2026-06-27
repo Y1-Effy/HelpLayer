@@ -14,7 +14,7 @@ import { showcaseStrings } from './showcase-i18n.js';
 const STYLE_ID = 'hl-footer-style';
 
 const NPM_CMD = 'npm install help-layer';
-const SCRIPT_TAG = '<script src="https://unpkg.com/help-layer@1.3.0/dist/help-layer.iife.js"></script>';
+const SCRIPT_TAG = '<script src="https://unpkg.com/help-layer@1.4.0/dist/help-layer.iife.js"></script>';
 const LINKS = {
   github: 'https://github.com/Y1-Effy/HelpLayer',
   npm: 'https://www.npmjs.com/package/help-layer',

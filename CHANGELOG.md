@@ -10,10 +10,12 @@ For released versions, the full notes also live on the
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-27
+
 ### Added
 - **Localizable assistive-tech labels** — `markerAriaLabel` (build a marker's `aria-label` from the help
   title) and `closeLabel` (the popup close button's `aria-label`). Both default to the previous English
-  strings (`Help: <title>` / `Close`), so this is non-breaking.
+  strings (`Help: <title>` / `Close`), so this is non-breaking. ([#25])
 - **`help-layer` CLI** — `check` (static config audit: bound / inline / unused / missing ids) and
   `scaffold` (generate a config stub from your markup), plus a runtime `diagnose()` that reports how the
   config maps onto the live DOM (also on `window.helpLayerDiagnose` with `debug: true`). ([#23])
@@ -29,7 +31,7 @@ For released versions, the full notes also live on the
   `markerPlacement` / `popupPlacement` playground, and stale-content fixes (Floating UI references, pinned
   version, dependency count). ([#24])
 - Expanded regression coverage (popup-switch `onClose`, Escape two-stage, scrim-click close, Shadow DOM /
-  free-placement markers, SPA dynamic mount, and the new a11y label options).
+  free-placement markers, SPA dynamic mount, and the new a11y label options). ([#25])
 
 ## [1.3.0] - 2026-06-26
 
@@ -81,7 +83,8 @@ Runtime hardening release. No public API changes — non-breaking, drop-in upgra
   Toggleable help markers with description popups, Shadow DOM piercing, SPA dynamic elements, marker
   overlap avoidance, screen-edge flip/shift, focus management, and full teardown on OFF.
 
-[Unreleased]: https://github.com/Y1-Effy/HelpLayer/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Y1-Effy/HelpLayer/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.0.1...v1.1.0
@@ -89,3 +92,4 @@ Runtime hardening release. No public API changes — non-breaking, drop-in upgra
 [1.0.0]: https://github.com/Y1-Effy/HelpLayer/releases/tag/v1.0.0
 [#23]: https://github.com/Y1-Effy/HelpLayer/pull/23
 [#24]: https://github.com/Y1-Effy/HelpLayer/pull/24
+[#25]: https://github.com/Y1-Effy/HelpLayer/pull/25

@@ -30,6 +30,9 @@ import { createToggleController } from './toggle.js';
  * @property {string} [markerLabel] character shown on the marker (default '?')
  * @property {Placement} [markerPlacement] corner to overlap the marker onto (default 'top-end')
  * @property {Placement} [popupPlacement] initial popup placement (default 'bottom-start')
+ * @property {(title: string) => string} [markerAriaLabel] build a marker's aria-label from the help title
+ *   (default `Help: ${title}`); use it to localize the assistive-tech announcement
+ * @property {string} [closeLabel] aria-label for the popup's close (×) button (default 'Close'); localizable
  * @property {string} [nonce] nonce to allow the injected <style> under a strict CSP (style-src 'nonce-…')
  * @property {boolean} [debug] dev aid: also expose diagnose() as window.helpLayerDiagnose for the devtools console
  */

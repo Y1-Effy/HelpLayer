@@ -50,6 +50,8 @@ function referenceFor(record) {
  *   marker's target transitions to hidden (e.g. display:none) — lets the caller close a popup open on it
  * @param {string} [options.markerLabel] character shown on the marker (default '?')
  * @param {import('./types.js').Placement} [options.markerPlacement] corner to overlap (default 'top-end')
+ * @param {(title: string) => string} [options.markerAriaLabel] build the marker's aria-label from the
+ *   record title (default `Help: ${title}`); lets callers localize the assistive-tech announcement
  */
 export function createMarkerManager(state, {
   onMarkerClick,
@@ -57,6 +59,7 @@ export function createMarkerManager(state, {
   onMarkerHidden,
   markerLabel = '?',
   markerPlacement = 'top-end',
+  markerAriaLabel = (title) => `Help: ${title}`,
 }) {
   /**
    * @typedef {object} MarkerEntry
@@ -202,7 +205,7 @@ export function createMarkerManager(state, {
       return;
     }
 
-    const el = createMarker(record.title, markerLabel);
+    const el = createMarker(record.title, markerLabel, markerAriaLabel(record.title));
     document.body.appendChild(el);
 
     const handleClick = () => onMarkerClick(record, el);

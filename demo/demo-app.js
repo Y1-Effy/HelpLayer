@@ -460,6 +460,8 @@ initHelpLayer({
   markerLabel: 'i',           // character on the marker (default '?')
   markerPlacement: 'top-end', // which corner to overlap
   popupPlacement: 'bottom-start',
+  markerAriaLabel: (t) => \`Help: \${t}\`, // localize the marker's screen-reader label
+  closeLabel: 'Close',        // localize the popup close button's label
   attribute: 'data-help-id',  // change the target attribute name
   silent: true,               // suppress warnings for unregistered keys
   nonce: pageNonce,           // allow the injected <style> under a strict CSP

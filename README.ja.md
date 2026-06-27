@@ -197,6 +197,8 @@ help.destroy();  // リスナー解除＋完全後始末
 | `markerLabel` | `string` | `'?'` | マーカーに表示する文字 |
 | `markerPlacement` | `Placement` | `'top-end'` | マーカーを対象に重ねる位置。任意の `Placement` 値（`popupPlacement` と同じ12種）。`top-end`/`bottom-start` などの隅が一般的 |
 | `popupPlacement` | `Placement` | `'bottom-start'` | ポップアップ初期配置（画面端では自動で flip/shift） |
+| `markerAriaLabel` | `(title: string) => string` | `` `Help: ${title}` `` | マーカーの `aria-label` をタイトルから生成。スクリーンリーダーの読み上げをローカライズ |
+| `closeLabel` | `string` | `'Close'` | ポップアップの閉じる（×）ボタンの `aria-label`。スクリーンリーダーの読み上げをローカライズ |
 | `nonce` | `string` | なし | 厳格な CSP（`style-src 'nonce-…'`）下で注入 `<style>` を許可するための nonce（後述） |
 | `silent` | `boolean` | `false` | 非致命の警告ログを抑止（未登録キー・未知オプション・同一id の open） |
 | `debug` | `boolean` | `false` | 開発補助: `diagnose()` を `window.helpLayerDiagnose` としても公開 |
@@ -447,4 +449,5 @@ help.diagnose();        // ログ＋ { bound, inline, missingConfig, unmatchedCo
 
 - ソース: <https://github.com/Y1-Effy/HelpLayer>
 - バグ報告・要望: <https://github.com/Y1-Effy/HelpLayer/issues>
+- 変更履歴: [CHANGELOG.md](./CHANGELOG.md)
 - ライセンス: [ISC](./LICENSE)

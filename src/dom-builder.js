@@ -22,21 +22,25 @@ export function createBlockingLayer() {
 /**
  * @param {string} title description title used for the assistive-tech label
  * @param {string} [label] character shown on the marker (default '?'). Visual only; does not affect the aria-label.
+ * @param {string} [ariaLabel] full aria-label for the marker (default `Help: ${title}`). Lets callers
+ *   localize the assistive-tech announcement; falls back to the English default when omitted.
  */
-export function createMarker(title, label = '?') {
+export function createMarker(title, label = '?', ariaLabel = `Help: ${title}`) {
   const marker = document.createElement('button');
   marker.type = 'button';
   marker.className = 'help-layer-marker';
   marker.textContent = label;
-  marker.setAttribute('aria-label', `Help: ${title}`);
+  marker.setAttribute('aria-label', ariaLabel);
   return marker;
 }
 
 /**
  * Create the single popup shared across the whole library.
  * Also returns references to titleEl/textEl (used to update the content) and the close button closeEl.
+ * @param {string} [closeLabel] aria-label for the close (×) button (default 'Close'). Lets callers
+ *   localize the assistive-tech announcement; falls back to the English default when omitted.
  */
-export function createPopup() {
+export function createPopup(closeLabel = 'Close') {
   // One sequence value per popup, shared by the title and body ids (then advanced once), so two
   // instances on a page never collide on either id.
   const seq = popupSeq++;
@@ -69,7 +73,7 @@ export function createPopup() {
   closeEl.type = 'button';
   closeEl.className = 'help-layer-popup__close';
   closeEl.textContent = '×';
-  closeEl.setAttribute('aria-label', 'Close');
+  closeEl.setAttribute('aria-label', closeLabel);
 
   root.append(titleEl, textEl, closeEl);
 

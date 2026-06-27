@@ -94,6 +94,16 @@ describe('createPopupController', () => {
     expect(textEl.querySelector('*')).toBeNull();
   });
 
+  it('labels the close button "Close" by default and honors a custom closeLabel', () => {
+    const state = createState();
+    const popup = createPopupController(state);
+    expect(popup.root.querySelector('.help-layer-popup__close').getAttribute('aria-label')).toBe('Close');
+
+    const state2 = createState();
+    const popup2 = createPopupController(state2, { closeLabel: '閉じる' });
+    expect(popup2.root.querySelector('.help-layer-popup__close').getAttribute('aria-label')).toBe('閉じる');
+  });
+
   it('passes popupPlacement to anchorPopup', () => {
     const state = createState();
     const popup = createPopupController(state, { popupPlacement: 'right-start' });
@@ -172,6 +182,38 @@ describe('createPopupController', () => {
     popup.open(record, marker);
     state.teardownAll();
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('fires onClose for the previous popup when switching directly to another record', () => {
+    // Clicking a second marker while one popup is open re-points the shared popup; onClose must fire for
+    // the previous record so open/close callbacks stay balanced (regression guard for the switch path).
+    const onClose = jest.fn();
+    const onOpenRecord = { id: 'r2', title: 'Second', text: 'Second body' };
+    const state = createState();
+    const popup = createPopupController(state, { onClose });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    expect(onClose).not.toHaveBeenCalled();
+
+    popup.open(onOpenRecord, marker); // switch r1 -> r2
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    popup.close();
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not fire onClose when re-opening the same record', () => {
+    const onClose = jest.fn();
+    const state = createState();
+    const popup = createPopupController(state, { onClose });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    popup.open(record, marker); // same id -> not a switch
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('does not fire onClose when tearing down without ever opening', () => {

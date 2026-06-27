@@ -138,7 +138,9 @@ export function createToggleController(options) {
     markers = createMarkerManager(state, {
       markerLabel,
       markerPlacement,
-      ...(markerAriaLabel ? { markerAriaLabel } : {}),
+      // undefined falls through to createMarkerManager's own default (`Help: ${title}`), so pass it
+      // straight like closeLabel rather than conditionally spreading it.
+      markerAriaLabel,
       onMarkerClick: (record, markerEl) => {
         if (popup.isOpen(record.id)) {
           popup.close();

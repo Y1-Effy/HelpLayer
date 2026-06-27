@@ -83,7 +83,8 @@ const help = initHelpLayer({
 > `record.title` for inline-only targets that have no key.
 
 > `onClose` also fires once when `update()` / `disable()` / `destroy()` close an open popup during
-> cleanup, so the dwell timing above stays balanced.
+> cleanup, and once for the previous entry when you open a different one while a popup is already
+> showing (switching markers), so the dwell timing above stays balanced.
 
 ---
 

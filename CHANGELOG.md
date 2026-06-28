@@ -10,29 +10,31 @@ For released versions, the full notes also live on the
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-28
+
 ### Fixed
 - **`destroy()` is now terminal.** After `destroy()`, calling `enable()` / `disable()` / `toggle()` /
   `open()` / `close()` / `update()` is a warn-and-no-op (suppressed by `silent`) instead of silently
-  re-creating a half-wired controller whose toggle listener was already removed.
+  re-creating a half-wired controller whose toggle listener was already removed. ([#27])
 - **`open(key)` no longer leaves the page blocked on a missing key.** When `open()` auto-enables the mode
   but the key isn't found, it reverts to the original OFF state (if the caller had already turned the mode
-  ON, it stays ON). Previously the full-screen blocking layer could remain with nothing shown.
+  ON, it stays ON). Previously the full-screen blocking layer could remain with nothing shown. ([#27])
 - **Focus trap skips `:disabled` form controls.** A `render()` returning a disabled `button` / `input` /
-  `select` / `textarea` no longer traps Tab on an unfocusable element.
+  `select` / `textarea` no longer traps Tab on an unfocusable element. ([#27])
 
 ### Added
 - **One-instance-per-document guard.** Initializing a second HelpLayer while another is still live logs a
   warning (suppressed by `silent`), since two active instances would compete over the `inert` isolation,
-  the injected `<style>`, and `window.helpLayerDiagnose`. Call `destroy()` on the previous instance first.
+  the injected `<style>`, and `window.helpLayerDiagnose`. Call `destroy()` on the previous instance first. ([#27])
 
 ### Changed
 - **`package.json` `exports` narrowed** to the supported entry points (package root, `./iife`,
-  `./package.json`); the catch-all `./dist/*` is removed so internal build paths aren't a de-facto API.
+  `./package.json`); the catch-all `./dist/*` is removed so internal build paths aren't a de-facto API. ([#27])
 - **Docs corrected.** `SECURITY.md` now states HelpLayer has no runtime dependencies (`@floating-ui/dom`
   is a build-time devDependency) and softens the "no new attack surface" wording to "minimize"; the README
   clarifies the marker-size limitation (custom sizes are honored), documents late `attachShadow()` and the
   one-instance model, notes that the Node.js requirement is tooling-only, and distinguishes "doesn't touch
-  the host's event listeners" from "no event can ever be observed". CI now runs `check` on Node 18/20/22.
+  the host's event listeners" from "no event can ever be observed". CI now runs `check` on Node 18/20/22. ([#27])
 
 ## [1.4.0] - 2026-06-27
 
@@ -107,7 +109,8 @@ Runtime hardening release. No public API changes — non-breaking, drop-in upgra
   Toggleable help markers with description popups, Shadow DOM piercing, SPA dynamic elements, marker
   overlap avoidance, screen-edge flip/shift, focus management, and full teardown on OFF.
 
-[Unreleased]: https://github.com/Y1-Effy/HelpLayer/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Y1-Effy/HelpLayer/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Y1-Effy/HelpLayer/compare/v1.1.0...v1.2.0
@@ -117,3 +120,4 @@ Runtime hardening release. No public API changes — non-breaking, drop-in upgra
 [#23]: https://github.com/Y1-Effy/HelpLayer/pull/23
 [#24]: https://github.com/Y1-Effy/HelpLayer/pull/24
 [#25]: https://github.com/Y1-Effy/HelpLayer/pull/25
+[#27]: https://github.com/Y1-Effy/HelpLayer/pull/27

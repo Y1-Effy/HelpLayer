@@ -7,17 +7,38 @@ on:
   pull_request:
 
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
+    # Run lint・typecheck・test・build across the supported Node range (engines: ">=18"), so a
+    # version-specific issue in the CLI / build / type generation is caught, not just on Node 20.
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run check
       - run: npm run build
+
+  # Stable aggregate gate. The branch ruleset requires a status check literally named "check"; a matrix
+  # job reports per-version contexts ("test (18)" …) instead, so this single job keeps that required name
+  # and turns green only when every matrix leg passed. `if: always()` ensures it always reports a status.
+  check:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all matrix legs passed
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "test matrix result: ${{ needs.test.result }}"
+            exit 1
+          fi
 
   # Real-browser regression for layout/scroll/z-index behaviors that jsdom can't cover.
   e2e:

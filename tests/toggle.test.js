@@ -254,6 +254,102 @@ describe('createToggleController', () => {
     expect(markerCount()).toBe(0);
   });
 
+  describe('one instance per document', () => {
+    it('warns when a second instance is initialized while the first is still live', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const first = createToggleController({ config, toggle: toggleEl });
+
+      const second = createToggleController({ config, toggle: toggleEl });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already active on this document'));
+
+      first.destroy();
+      second.destroy();
+      warnSpy.mockRestore();
+    });
+
+    it('does not warn when the previous instance was destroyed first', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const first = createToggleController({ config, toggle: toggleEl });
+      first.destroy();
+
+      const second = createToggleController({ config, toggle: toggleEl });
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      second.destroy();
+      warnSpy.mockRestore();
+    });
+
+    it('suppresses the second-instance warning with silent:true', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const first = createToggleController({ config, toggle: toggleEl });
+
+      const second = createToggleController({ config, toggle: toggleEl, silent: true });
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      first.destroy();
+      second.destroy();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('destroy() is terminal', () => {
+    it('enable() after destroy() is a warn-and-no-op (does not re-create state)', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = createToggleController({ config, toggle: toggleEl });
+      controller.destroy();
+
+      controller.enable();
+
+      expect(controller.isActive()).toBe(false);
+      expect(markerCount()).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('after destroy()'));
+
+      warnSpy.mockRestore();
+    });
+
+    it('open()/toggle()/update()/close() after destroy() are no-ops', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const onOpen = jest.fn();
+      const controller = createToggleController({ config, toggle: toggleEl, onOpen });
+      controller.destroy();
+
+      controller.open('save');
+      controller.toggle();
+      controller.update({ save: { title: 'Save', text: 'x' } });
+      controller.close();
+
+      expect(controller.isActive()).toBe(false);
+      expect(markerCount()).toBe(0);
+      expect(onOpen).not.toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('post-destroy no-op warnings are suppressed with silent:true', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = createToggleController({ config, toggle: toggleEl, silent: true });
+      controller.destroy();
+
+      controller.enable();
+
+      expect(controller.isActive()).toBe(false);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('destroy() is idempotent', () => {
+      const controller = createToggleController({ config, toggle: toggleEl });
+      controller.enable();
+
+      expect(() => {
+        controller.destroy();
+        controller.destroy();
+      }).not.toThrow();
+      expect(controller.isActive()).toBe(false);
+    });
+  });
+
   it('throws on an invalid config', () => {
     expect(() => createToggleController({ config: { x: { title: '' } }, toggle: toggleEl })).toThrow();
   });
@@ -536,6 +632,37 @@ describe('createToggleController', () => {
       expect(onOpen).not.toHaveBeenCalled();
       // The popup was never opened, so it stays hidden (its display is left at the default, not 'block').
       expect(popupDisplay()).not.toBe('block');
+
+      controller.destroy();
+      warnSpy.mockRestore();
+    });
+
+    it('open(key) reverts to OFF when it auto-enabled but the key was not found', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = createToggleController({ config, toggle: toggleEl });
+
+      // OFF at the start; a not-found key must not strand the page blocked with nothing shown.
+      expect(controller.isActive()).toBe(false);
+      controller.open('nope');
+
+      expect(controller.isActive()).toBe(false);
+      expect(markerCount()).toBe(0);
+      expect(document.querySelector('.help-layer-blocking-layer')).toBeNull();
+
+      controller.destroy();
+      warnSpy.mockRestore();
+    });
+
+    it('open(key) for a not-found key leaves the mode ON when it was already ON', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = createToggleController({ config, toggle: toggleEl });
+      controller.enable();
+
+      // The caller turned it ON, so a not-found open() must not turn it OFF underneath them.
+      controller.open('nope');
+
+      expect(controller.isActive()).toBe(true);
+      expect(markerCount()).toBe(2);
 
       controller.destroy();
       warnSpy.mockRestore();

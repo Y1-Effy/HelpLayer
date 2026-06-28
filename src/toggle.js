@@ -30,6 +30,13 @@ const KNOWN_OPTIONS = new Set([
   'popupPlacement', 'markerAriaLabel', 'closeLabel', 'nonce', 'debug',
 ]);
 
+// Count of live (created, not-yet-destroyed) controllers, to warn when a second HelpLayer is initialized
+// on the same document. The supported model is one instance per document: two concurrently-active
+// instances would compete over document-level resources — the `inert` a11y isolation, the injected
+// <style>, and the window.helpLayerDiagnose global. This counter is per-realm, so a separate iframe
+// (its own document and module instance) is unaffected. Call destroy() before re-initializing.
+let liveInstances = 0;
+
 function resolveToggleElement(toggle) {
   if (typeof toggle === 'string') {
     const el = document.querySelector(toggle);
@@ -107,10 +114,25 @@ export function createToggleController(options) {
   // The toggle element is optional. If omitted, it's driven solely by programmatic control like enable()/disable().
   const toggleEl = toggle != null ? resolveToggleElement(toggle) : null;
 
+  // Warn (once, after the config/toggle validate so a throwing init doesn't count) when another instance
+  // is still live on this document. Validation can't have thrown by here, so this controller will be created.
+  if (liveInstances > 0 && !silent) {
+    console.warn(
+      '[help-layer] another HelpLayer instance is already active on this document. ' +
+      'The supported model is one instance per document (they would compete over inert isolation, the ' +
+      'injected <style>, and window.helpLayerDiagnose). destroy() the previous one before re-initializing.',
+    );
+  }
+  liveInstances += 1;
+
   let state = null;
   // References to the current subsystems that exist only while ON. Hoisted because open(key)/close() touch them too.
   let popup = null;
   let markers = null;
+  // destroy() is a terminal operation: once called, the controller is dead and every public method
+  // becomes a warn-and-no-op. Without this flag, enable() after destroy() would re-create state while
+  // the toggle's click listener is already gone, leaving an inconsistent half-wired controller.
+  let destroyed = false;
 
   // Only builds the side effects (onEnable/onDisable aren't called here; they fire on the enable/disable side).
   function turnOn() {
@@ -222,8 +244,17 @@ export function createToggleController(options) {
     }
   }
 
+  // Guard the public surface after destroy(): warn once and bail. Returns true when the call should be
+  // dropped, so each entry point can `if (afterDestroy('name')) { return; }`.
+  function afterDestroy(method) {
+    if (destroyed && !silent) {
+      console.warn(`[help-layer] ${method}() called after destroy() (ignored); this controller is no longer usable.`);
+    }
+    return destroyed;
+  }
+
   function enable() {
-    if (state) {
+    if (afterDestroy('enable') || state) {
       return;
     }
     turnOn();
@@ -231,7 +262,7 @@ export function createToggleController(options) {
   }
 
   function disable() {
-    if (!state) {
+    if (afterDestroy('disable') || !state) {
       return;
     }
     turnOff();
@@ -239,6 +270,9 @@ export function createToggleController(options) {
   }
 
   function toggleMode() {
+    if (afterDestroy('toggle')) {
+      return;
+    }
     if (state) {
       disable();
     } else {
@@ -248,7 +282,12 @@ export function createToggleController(options) {
 
   // Open the description for a given key programmatically. When OFF, first enable() to create the markers.
   function openByKey(key) {
-    if (!state) {
+    if (afterDestroy('open')) {
+      return;
+    }
+    // Track whether *this* call turned the mode on, so a not-found key can be undone (see below).
+    const autoEnabled = !state;
+    if (autoEnabled) {
       enable();
     }
     if (!markers || !popup) {
@@ -258,6 +297,12 @@ export function createToggleController(options) {
     if (entries.length === 0) {
       if (!silent) {
         console.warn(`[help-layer] open(): no help marker for key "${key}"`);
+      }
+      // A stale URL / typo / not-yet-mounted target shouldn't leave the page blocked with nothing shown.
+      // If we auto-enabled for this open(), revert to the original OFF state; if the caller had already
+      // turned the mode ON, leave it ON (we didn't open it, so we don't close it).
+      if (autoEnabled) {
+        disable();
       }
       return;
     }
@@ -276,6 +321,9 @@ export function createToggleController(options) {
 
   // Close the open description (does not turn the mode itself OFF).
   function closePopup() {
+    if (afterDestroy('close')) {
+      return;
+    }
     if (popup) {
       popup.close();
     }
@@ -284,6 +332,9 @@ export function createToggleController(options) {
   // Replace the helpConfig. If ON, rebuild via turnOff()+turnOn(): onEnable/onDisable are not fired, but
   // a popup open at the time is closed by the teardown (so onClose fires) and focus returns to the toggle.
   function update(newConfig) {
+    if (afterDestroy('update')) {
+      return;
+    }
     validateConfig(newConfig);
     activeConfig = newConfig;
     if (state) {
@@ -324,7 +375,15 @@ export function createToggleController(options) {
     update,
     diagnose,
     destroy() {
+      if (destroyed) {
+        return;
+      }
+      // Tear everything down first (disable() still runs because `destroyed` isn't set yet), then mark
+      // the controller terminal so any later enable()/open()/etc. is a warn-and-no-op rather than
+      // silently re-creating a half-wired instance with no toggle listener.
       disable();
+      destroyed = true;
+      liveInstances -= 1;
       if (toggleEl) {
         toggleEl.removeEventListener('click', toggleMode);
       }

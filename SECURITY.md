@@ -34,7 +34,9 @@ backported — please upgrade to the current version.
 
 ## Dependency policy
 
-- The only runtime dependency is [`@floating-ui/dom`](https://floating-ui.com/).
+- **HelpLayer has no runtime dependencies** — the shipped `dist/` bundles pull in nothing at run time.
+  [`@floating-ui/dom`](https://floating-ui.com/) is a **devDependency** only (it backs an alternative,
+  non-default positioning backend and the typecheck); the default backend is dependency-free.
 - [Dependabot](./.github/dependabot.yml) watches npm dependencies and GitHub Actions weekly,
   so security and maintenance updates are surfaced as pull requests.
 - When loading HelpLayer from a CDN, pin an exact version and add Subresource Integrity
@@ -42,8 +44,10 @@ backported — please upgrade to the current version.
 
 ## Threat model (summary)
 
-HelpLayer runs entirely in the browser and is designed to add **no** new attack surface to
-the host app. The full details live in the [README Security section](./README.md#security);
+HelpLayer runs entirely in the browser and is designed to **minimize** any additional attack surface it
+introduces to the host app. (It does add DOM, a `<style>`, event listeners, focus control, and `inert`,
+and `render` can insert arbitrary DOM — so the surface isn't literally zero; the goal is to keep it as
+small as possible.) The full details live in the [README Security section](./README.md#security);
 in short:
 
 - **No network, no storage.** It never calls `fetch`, and never touches

@@ -47,7 +47,11 @@ export function createPopupController(state, { onClose, render, popupPlacement =
   // Focus trap. aria-modal="true" promises AT that the rest of the page is inert, but keyboard Tab
   // would still escape to the markers/toggle behind the popup (they're "library elements", so the
   // blocking layer lets their keys through). Keep Tab cycling inside the dialog to match the promise.
-  const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  // Exclude :disabled form controls at the selector level — they're never focusable, so letting them
+  // into the cycle would make Tab appear to "stick". This is cheap and reliable (unlike a layout probe);
+  // a render() returning a disabled <button>/<input> is the realistic way one enters the popup body.
+  const FOCUSABLE = 'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),'
+    + 'textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
   function trapTab(event) {
     if (event.key !== 'Tab') {
       return;

@@ -18,7 +18,8 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/help-layer.esm.js"
     },
-    "./dist/*": "./dist/*"
+    "./iife": "./dist/help-layer.iife.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "src",

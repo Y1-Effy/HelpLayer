@@ -34,7 +34,9 @@ GitHub の非公開脆弱性報告（private vulnerability reporting）を利用
 
 ## 依存パッケージ方針
 
-- ランタイム依存は [`@floating-ui/dom`](https://floating-ui.com/) のみです。
+- **HelpLayer にランタイム依存はありません** — 配布する `dist/` は実行時に何も読み込みません。
+  [`@floating-ui/dom`](https://floating-ui.com/) は **devDependency のみ**です（既定ではない代替の
+  配置バックエンドの維持と型チェック用）。既定のバックエンドは依存ゼロです。
 - [Dependabot](./.github/dependabot.yml) が npm 依存と GitHub Actions を毎週監視し、
   セキュリティ・保守更新をプルリクエストとして提示します。
 - CDN から読み込む場合は、バージョンを固定し Subresource Integrity（SRI）を付与してください
@@ -42,7 +44,9 @@ GitHub の非公開脆弱性報告（private vulnerability reporting）を利用
 
 ## 脅威モデル（要約）
 
-HelpLayer はすべてブラウザ内で動作し、ホストアプリに**新たな攻撃面を追加しない**設計です。
+HelpLayer はすべてブラウザ内で動作し、ホストアプリに加える**追加の攻撃面を最小化する**設計です。
+（DOM・`<style>`・イベントリスナー・フォーカス制御・`inert` を追加し、`render` は任意の DOM を挿入できる
+ため、攻撃面が文字どおりゼロというわけではありません。可能な限り小さく保つことが目標です。）
 詳細は [README のセキュリティ節](./README.ja.md#セキュリティ)にありますが、要点は次のとおりです。
 
 - **外部通信なし・ストレージ利用なし。** `fetch` を呼ばず、`localStorage` / `cookie` にも触れません。

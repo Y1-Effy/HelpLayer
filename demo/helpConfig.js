@@ -56,7 +56,7 @@ const CONTENT = {
     __free_001: {
       title: 'About this screen',
       text: 'A demo screen to check anchoring, dynamic elements, Shadow DOM, modals, and a11y.',
-      position: { top: 80, left: 560 },
+      position: { top: 200, left: 560 },
     },
   },
   ja: {
@@ -111,7 +111,7 @@ const CONTENT = {
     __free_001: {
       title: 'この画面について',
       text: '追従・動的・Shadow DOM・モーダル・a11y を確認するデモ画面です。',
-      position: { top: 80, left: 560 },
+      position: { top: 200, left: 560 },
     },
   },
 };

@@ -238,7 +238,7 @@ function currentHelpConfig() {
     __free_001: {
       title: t('freeVariantTitle'),
       text: t('freeVariantText'),
-      position: { top: 80, left: 560 },
+      position: { top: 200, left: 560 },
     },
   };
 }

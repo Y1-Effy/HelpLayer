@@ -343,6 +343,41 @@ describe('createPopupController', () => {
     expect(document.activeElement).toBe(closeBtn);
   });
 
+  it('skips disabled form controls in the Tab cycle', () => {
+    // A render() returning a disabled button between two enabled stops must not catch focus: Tab should
+    // step straight over it (the close × and an enabled link are the only real stops).
+    const body = document.createElement('div');
+    const enabled = document.createElement('a');
+    enabled.href = 'https://example.com';
+    enabled.textContent = 'Enabled link';
+    const disabledBtn = document.createElement('button');
+    disabledBtn.textContent = 'Disabled';
+    disabledBtn.disabled = true;
+    body.append(enabled, disabledBtn);
+
+    const state = createState();
+    const popup = createPopupController(state, { render: () => body });
+    const marker = document.createElement('button');
+    document.body.appendChild(marker);
+
+    popup.open(record, marker);
+    const closeBtn = popup.root.querySelector('.help-layer-popup__close');
+
+    const tab = () => popup.root.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    );
+
+    // From the root, the first stop is the enabled link (close × comes after in DOM order).
+    tab();
+    expect(document.activeElement).toBe(enabled);
+    // Next Tab skips the disabled button and lands on the close ×.
+    tab();
+    expect(document.activeElement).toBe(closeBtn);
+    // Wrap back to the enabled link — the disabled button is never a stop.
+    tab();
+    expect(document.activeElement).toBe(enabled);
+  });
+
   it('stops trapping Tab once the dialog is closed', () => {
     const state = createState();
     const popup = createPopupController(state);

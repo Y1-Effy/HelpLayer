@@ -10,6 +10,30 @@ For released versions, the full notes also live on the
 
 ## [Unreleased]
 
+### Fixed
+- **`destroy()` is now terminal.** After `destroy()`, calling `enable()` / `disable()` / `toggle()` /
+  `open()` / `close()` / `update()` is a warn-and-no-op (suppressed by `silent`) instead of silently
+  re-creating a half-wired controller whose toggle listener was already removed.
+- **`open(key)` no longer leaves the page blocked on a missing key.** When `open()` auto-enables the mode
+  but the key isn't found, it reverts to the original OFF state (if the caller had already turned the mode
+  ON, it stays ON). Previously the full-screen blocking layer could remain with nothing shown.
+- **Focus trap skips `:disabled` form controls.** A `render()` returning a disabled `button` / `input` /
+  `select` / `textarea` no longer traps Tab on an unfocusable element.
+
+### Added
+- **One-instance-per-document guard.** Initializing a second HelpLayer while another is still live logs a
+  warning (suppressed by `silent`), since two active instances would compete over the `inert` isolation,
+  the injected `<style>`, and `window.helpLayerDiagnose`. Call `destroy()` on the previous instance first.
+
+### Changed
+- **`package.json` `exports` narrowed** to the supported entry points (package root, `./iife`,
+  `./package.json`); the catch-all `./dist/*` is removed so internal build paths aren't a de-facto API.
+- **Docs corrected.** `SECURITY.md` now states HelpLayer has no runtime dependencies (`@floating-ui/dom`
+  is a build-time devDependency) and softens the "no new attack surface" wording to "minimize"; the README
+  clarifies the marker-size limitation (custom sizes are honored), documents late `attachShadow()` and the
+  one-instance model, notes that the Node.js requirement is tooling-only, and distinguishes "doesn't touch
+  the host's event listeners" from "no event can ever be observed". CI now runs `check` on Node 18/20/22.
+
 ## [1.4.0] - 2026-06-27
 
 ### Added

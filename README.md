@@ -292,11 +292,28 @@ What sets the minimum (the two newest APIs degrade gracefully, so the practical 
   CJS context can't use it meaningfully. In non-ESM toolchains, consume the ESM build via your bundler,
   or load the IIFE build above.
 
+### Node.js requirement
+
+The `engines` field requires **Node.js ≥ 18**, but **this is only for tooling — the CLI
+(`help-layer check` / `scaffold`), the build, and installing the npm package**. The library itself runs in
+the browser and needs no Node.js at run time; loading the ESM or IIFE build in a page has no Node dependency.
+
 ## Known limitations
 
 - Closed Shadow DOM is unreachable from JS, so it is unsupported (only open shadow roots are pierced).
-- The offset that overlaps the marker onto a corner assumes the default marker size (24px). Changing
-  `--help-layer-marker-size` significantly may cause a slight drift.
+- An open shadow root that is `attachShadow()`ed **after** its host is already connected isn't auto-detected:
+  the `MutationObserver` sees the host's `childList`, not a later shadow attach. If a web component upgrades
+  or initializes its shadow root asynchronously, its targets won't get markers until the tree is re-scanned —
+  call `update(config)` (it tears down and rebuilds, re-piercing all current open shadow roots) after the
+  component has initialized, or toggle the mode OFF→ON.
+- Only **one HelpLayer instance per document** is supported. Two instances active at once would compete over
+  document-level resources (the `inert` a11y isolation, the injected `<style>`, the `window.helpLayerDiagnose`
+  global), so initializing a second one while another is still live logs a warning. Call `destroy()` on the
+  previous instance before re-initializing. (Separate documents/iframes are independent.)
+- A custom `--help-layer-marker-size` **is** honored — markers read their real rendered size at runtime, so
+  resizing them keeps them anchored to the target. The one caveat: the size is measured once and cached, so
+  changing the variable *after* markers are already placed isn't re-measured until they remount (toggle
+  OFF→ON or `update(config)`).
 - **Target *state* changes are not watched** (only *layout* and *presence* are). While ON, a marker
   follows its target's position/size changes and is added/removed as the target enters/leaves the DOM,
   and it hides/reshows when the target itself is hidden/shown (e.g. `display:none`). However, changes
@@ -374,6 +391,12 @@ To report a vulnerability and for the support / security-release policy, see [SE
 - The only path through which untrusted data is inserted into the DOM as HTML / DOM nodes is the `render` option. Its return value is not sanitized, so
   neutralize it on the caller side if it contains user input (see "Line breaks & links in the body" above).
 - The library has no runtime dependencies. When using a CDN, pin the version and add SRI as noted above.
+- **What "doesn't touch the host's events" means.** HelpLayer never removes, replaces, or wraps the host
+  app's own event listeners; while ON, the transparent blocking layer absorbs pointer input and key
+  presses so normal operation is prevented. This is *not* a guarantee that the host observes **no**
+  events: a global listener the host registered on `window`/`document` in the **capture phase** before
+  HelpLayer started can still run before the layer suppresses the event. Treat it as "your existing
+  handlers are left intact and ordinary interaction is blocked," not "no event can ever be observed."
 
 ### Content Security Policy (CSP)
 

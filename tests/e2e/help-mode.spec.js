@@ -304,6 +304,45 @@ test('a marker on a position:fixed target uses the fixed strategy (no scroll jit
   expect(positions.normal).toBe('absolute');
 });
 
+test('a custom --help-layer-marker-size keeps the marker anchored to the target corner', async({ page }) => {
+  // Regression for the "marker size" concern: marker positioning reads the real offsetWidth at runtime
+  // (markers.js), so doubling --help-layer-marker-size must not push the marker off its target. The
+  // size-independent invariant for the default top-end placement is that the marker's right/bottom edges
+  // bite INSET(12px) inside the target's top-right corner — regardless of the marker's size. If the code
+  // had instead used the fixed 24px fallback, a 48px marker would overdraw the corner by ~24px.
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty('--help-layer-marker-size', '48px');
+  });
+  await page.click(TOGGLE);
+  await expect(page.locator(MARKER).first()).toBeVisible();
+  await page.waitForTimeout(80); // let the rAF loop settle a frame with the measured size
+
+  const SEL = '[data-help-id="save"]';
+  const m = await page.evaluate((sel) => {
+    const t = document.querySelector(sel).getBoundingClientRect();
+    const corner = { x: t.right, y: t.top };
+    let best = null;
+    for (const el of document.querySelectorAll('.help-layer-marker')) {
+      const r = el.getBoundingClientRect();
+      const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      const d = Math.hypot(c.x - corner.x, c.y - corner.y);
+      if (!best || d < best.d) {
+        best = { d, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
+      }
+    }
+    return { targetRight: t.right, targetTop: t.top, marker: best };
+  }, SEL);
+
+  // The CSS variable actually took effect (marker rendered at ~48px, not the 24px default).
+  expect(m.marker.width).toBeGreaterThan(40);
+  // Size-independent anchor on the size-sensitive axis: for top-end placement the marker's left edge is
+  // `target.right - size - inset`, so its *right* edge lands ~12px inside the target's right edge for ANY
+  // size — but only because positioning reads the real 48px width. With the buggy 24px-fallback math the
+  // rendered right edge would drift ~24px outward, far past this slack. (We don't assert the vertical
+  // edge: overlap avoidance can nudge a marker along Y in the demo's dense layout.)
+  expect(Math.abs(m.marker.right - (m.targetRight - 12))).toBeLessThan(5);
+});
+
 test('each card can reveal its implementation code', async({ page }) => {
   // The first card's <details> starts closed and opens to show a non-empty code snippet.
   const details = page.locator('.demo-card[data-snippet] details.demo-code').first();

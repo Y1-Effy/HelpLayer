@@ -9,11 +9,17 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Run lint・typecheck・test・build across the supported Node range (engines: ">=18"), so a
+    # version-specific issue in the CLI / build / type generation is caught, not just on Node 20.
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run check

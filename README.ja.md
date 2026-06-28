@@ -120,7 +120,7 @@ CDN から読む場合は、改ざん検知のため **バージョンを固定*
 
 ```html
 <script
-  src="https://unpkg.com/help-layer@1.4.0/dist/help-layer.iife.js"
+  src="https://unpkg.com/help-layer@1.5.0/dist/help-layer.iife.js"
   integrity="sha384-……（公開版のハッシュに差し替え）"
   crossorigin="anonymous"></script>
 <script>
@@ -132,7 +132,7 @@ CDN から読む場合は、改ざん検知のため **バージョンを固定*
 ```
 
 > `integrity` のハッシュは公開した実ファイルから生成します。例:
-> `curl -s https://unpkg.com/help-layer@1.4.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
+> `curl -s https://unpkg.com/help-layer@1.5.0/dist/help-layer.iife.js | openssl dgst -sha384 -binary | openssl base64 -A`
 > （バージョンを固定しないと SRI と不整合になり読み込みが拒否されます。）
 
 ## こんなときに（導入が刺さるケース）
